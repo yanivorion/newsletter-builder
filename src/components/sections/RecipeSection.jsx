@@ -1,14 +1,60 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { ImageIcon, Upload } from 'lucide-react';
 
-function RecipeSection({ title, image, ingredients, instructions, backgroundColor }) {
+function RecipeSection({ 
+  title, 
+  image, 
+  ingredients, 
+  instructions, 
+  backgroundColor, 
+  backgroundImage, 
+  backgroundType = 'solid',
+  gradientEnd,
+  overlayColor, 
+  overlayOpacity,
+  minHeight,
+  imageHeight = 200,
+  imageFit = 'cover',
+  // Inline editing props
+  isSelected = false,
+  onTitleChange,
+  onIngredientsChange,
+  onInstructionsChange
+}) {
+  const titleRef = useRef(null);
+  const [editingField, setEditingField] = useState(null);
+
+  // Determine background style
+  let backgroundStyle = {};
+  if (backgroundType === 'image' && backgroundImage) {
+    backgroundStyle = {
+      backgroundImage: `url(${backgroundImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    };
+  } else if (backgroundType === 'gradient' && gradientEnd) {
+    backgroundStyle = {
+      background: `linear-gradient(135deg, ${backgroundColor || '#FFFFFF'} 0%, ${gradientEnd} 100%)`
+    };
+  } else {
+    backgroundStyle = {
+      backgroundColor: backgroundColor || '#FFFFFF'
+    };
+  }
+
   const containerStyle = {
-    backgroundColor: backgroundColor || '#FFFFFF',
-    padding: '30px 20px'
+    ...backgroundStyle,
+    padding: '30px 20px',
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: minHeight ? `${minHeight}px` : undefined
   };
 
   const contentStyle = {
     maxWidth: '500px',
-    margin: '0 auto'
+    margin: '0 auto',
+    position: 'relative',
+    zIndex: 2
   };
 
   const titleStyle = {
@@ -23,10 +69,11 @@ function RecipeSection({ title, image, ingredients, instructions, backgroundColo
 
   const imageContainerStyle = {
     width: '100%',
-    height: '250px',
+    height: `${imageHeight}px`,
     marginBottom: '20px',
     borderRadius: '8px',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    position: 'relative'
   };
 
   const textBlockStyle = {
@@ -40,10 +87,36 @@ function RecipeSection({ title, image, ingredients, instructions, backgroundColo
     whiteSpace: 'pre-wrap'
   };
 
+  const placeholderStyle = {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F4F4F5',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#A1A1AA',
+    border: '2px dashed #E4E4E7',
+    borderRadius: '8px'
+  };
+
   return (
     <div style={containerStyle}>
+      {/* Background overlay */}
+      {backgroundImage && overlayOpacity > 0 && (
+        <div 
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: overlayColor || '#000000',
+            opacity: (overlayOpacity || 0) / 100,
+            zIndex: 1
+          }}
+        />
+      )}
+      
       <div style={contentStyle}>
-        <h2 style={titleStyle}>{title || 'מתכון חודשי'}</h2>
+        <h2 style={titleStyle}>{title || 'Recipe Title'}</h2>
         
         <div style={imageContainerStyle}>
           {image ? (
@@ -53,33 +126,23 @@ function RecipeSection({ title, image, ingredients, instructions, backgroundColo
               style={{ 
                 width: '100%', 
                 height: '100%', 
-                objectFit: 'cover' 
+                objectFit: imageFit 
               }} 
             />
           ) : (
-            <div 
-              style={{
-                width: '100%',
-                height: '100%',
-                backgroundColor: '#E0E0E0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#999999',
-                fontSize: '48px'
-              }}
-            >
-              🍽️
+            <div style={placeholderStyle}>
+              <ImageIcon size={48} strokeWidth={1} />
+              <span style={{ marginTop: '8px', fontSize: '14px' }}>Click to add recipe image</span>
             </div>
           )}
         </div>
 
         <div style={textBlockStyle}>
-          {ingredients || 'רכיבים:\n- מצרך 1\n- מצרך 2\n- מצרך 3'}
+          {ingredients || 'Ingredients:\n- Ingredient 1\n- Ingredient 2\n- Ingredient 3'}
         </div>
 
         <div style={textBlockStyle}>
-          {instructions || 'הוראות הכנה:\n1. שלב ראשון\n2. שלב שני\n3. שלב שלישי'}
+          {instructions || 'Instructions:\n1. Step one\n2. Step two\n3. Step three'}
         </div>
       </div>
     </div>

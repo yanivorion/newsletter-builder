@@ -12,7 +12,7 @@ const blankTemplate = {
       backgroundColor: '#FFFFFF', 
       gradientEnd: '#F5F5F5', 
       logo: null, 
-      title: 'Newsletter', 
+      title: '', 
       titleFontSize: 32,
       subtitle: '', 
       textColor: '#1C1917',

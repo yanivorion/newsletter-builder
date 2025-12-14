@@ -9,12 +9,51 @@ function ImageCollageSection({
   backgroundColor, 
   focalPoints = [],
   imageBackgrounds = [],  // Per-image background colors (for cutouts)
-  imageOverlays = []      // Per-image overlay colors with opacity
+  imageOverlays = [],     // Per-image overlay colors with opacity
+  minHeight,
+  backgroundType = 'solid',
+  backgroundImage,
+  gradientEnd,
+  overlayColor = '#000000',
+  overlayOpacity = 0
 }) {
   const preset = getPresetById(layout) || getPresetById('featured-left');
+  
+  // Determine background style based on type
+  let backgroundStyle = {};
+  if (backgroundType === 'image' && backgroundImage) {
+    backgroundStyle = {
+      backgroundImage: `url(${backgroundImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    };
+  } else if (backgroundType === 'gradient' && gradientEnd) {
+    backgroundStyle = {
+      background: `linear-gradient(135deg, ${backgroundColor || '#FFFFFF'} 0%, ${gradientEnd} 100%)`
+    };
+  } else {
+    backgroundStyle = {
+      backgroundColor: backgroundColor || '#FFFFFF'
+    };
+  }
+
+  const padding = 16;
+  const actualImageHeight = imageHeight || 200;
+  
+  // Container style - always auto height based on content
   const containerStyle = {
-    backgroundColor: backgroundColor || '#FFFFFF',
-    padding: '16px'
+    ...backgroundStyle,
+    padding: `${padding}px`,
+    position: 'relative',
+    overflow: 'hidden',
+    boxSizing: 'border-box'
+  };
+  
+  // Grid style - height controlled by imageHeight prop
+  const gridStyle = {
+    position: 'relative',
+    zIndex: 2,
+    height: `${actualImageHeight}px`
   };
 
   if (!preset) {
@@ -66,12 +105,25 @@ function ImageCollageSection({
 
   return (
     <div style={containerStyle}>
+      {/* Background overlay */}
+      {backgroundType === 'image' && backgroundImage && overlayOpacity > 0 && (
+        <div 
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: overlayColor,
+            opacity: overlayOpacity / 100,
+            zIndex: 1
+          }}
+        />
+      )}
       <div 
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gridTemplateRows: `repeat(${rows}, ${imageHeight / rows}px)`,
-          gap: `${gapPx}px`
+          gridTemplateRows: `repeat(${rows}, 1fr)`,
+          gap: `${gapPx}px`,
+          ...gridStyle
         }}
       >
         {processedCells.map((cell) => {

@@ -1,115 +1,189 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save } from 'lucide-react';
+import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save, Plus, Minus } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
 import TemplateSelector from './components/TemplateSelector';
-import NewsletterEditor from './components/NewsletterEditor';
-import SidebarEditor from './components/SidebarEditor';
+import WorkspaceCanvas from './components/WorkspaceCanvas';
+import FloatingToolbar from './components/FloatingToolbar';
+import FloatingThemeBar from './components/FloatingThemeBar';
+import SectionActionBar from './components/SectionActionBar';
 import { Button } from './components/ui/Button';
 import { exportToHTML, exportForGmail } from './utils/emailExport';
 import { cn } from './lib/utils';
-import { useHistory } from './hooks/useHistory';
-import { useAutosave } from './hooks/useAutosave';
+import { useWorkspace } from './hooks/useWorkspace';
+
+// Blank starter template
+const blankTemplate = {
+  name: 'New Newsletter',
+  sections: [
+    { 
+      id: 'header-1', 
+      type: 'header', 
+      backgroundColor: '#FFFFFF', 
+      gradientEnd: '#F5F5F5', 
+      logo: null, 
+      logoWidth: 120,
+      logoHeight: 'auto',
+      logoAlignment: 'center',
+      heroImage: null,
+      heroImageHeight: 200,
+      heroImageFit: 'cover',
+      showHeroPlaceholder: false,
+      title: '', 
+      titleFontSize: 32,
+      titleFontWeight: '700',
+      titleFontStyle: 'normal',
+      titleLetterSpacing: '-0.02em',
+      titleLineHeight: 1.2,
+      subtitle: '', 
+      subtitleFontSize: 16,
+      subtitleFontWeight: '400',
+      subtitleLetterSpacing: '0',
+      subtitleLineHeight: 1.4,
+      textColor: '#1C1917',
+      showDateBadge: false,
+      dateBadgeText: 'JULY 2025',
+      dateBadgeBg: '#04D1FC',
+      dateBadgeColor: '#FFFFFF',
+      paddingTop: 48,
+      paddingBottom: 48,
+      paddingHorizontal: 24,
+      spacingLogoToHero: 20,
+      spacingHeroToTitle: 24,
+      spacingTitleToSubtitle: 8
+    }
+  ]
+};
+
+const WORKSPACE_STORAGE_KEY = 'newsletter-workspace-v2';
 
 function AppContent() {
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [selectedSection, setSelectedSection] = useState(null);
+  const [showLanding, setShowLanding] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportedHTML, setExportedHTML] = useState('');
   const [copied, setCopied] = useState(false);
   const [copiedDesign, setCopiedDesign] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  // Use history hook for undo/redo
-  const {
-    state: newsletter,
-    setState: setNewsletter,
-    undo,
-    redo,
-    canUndo,
-    canRedo
-  } = useHistory(null);
 
-  // Use autosave hook
-  const {
-    loadSavedNewsletter,
-    clearSavedNewsletter,
-    getLastSaveTime,
-    hasSavedNewsletter
-  } = useAutosave(newsletter, setNewsletter);
+  // Use workspace hook for multi-newsletter management
+  const workspace = useWorkspace();
 
-  // Keyboard shortcuts for undo/redo
+  // Load saved workspace on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(WORKSPACE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.newsletters && parsed.newsletters.length > 0) {
+          workspace.loadState(parsed);
+          setShowLanding(false);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load workspace:', e);
+    }
+  }, []);
+
+  // Autosave workspace
+  useEffect(() => {
+    if (!showLanding && workspace.newsletters.length > 0) {
+      const timeout = setTimeout(() => {
+        try {
+          localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(workspace.getFullState()));
+        } catch (e) {
+          console.error('Failed to save workspace:', e);
+        }
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [workspace.newsletters, workspace.zoom, showLanding, workspace.getFullState]);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Undo/Redo
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
-        }
+        if (e.shiftKey) workspace.redo();
+        else workspace.undo();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
         e.preventDefault();
-        redo();
+        workspace.redo();
+      }
+      // Duplicate newsletter
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && workspace.activeNewsletterId) {
+        e.preventDefault();
+        workspace.duplicateNewsletter(workspace.activeNewsletterId);
+      }
+      // Copy newsletter
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && workspace.activeNewsletterId && !window.getSelection()?.toString()) {
+        workspace.copyNewsletter(workspace.activeNewsletterId);
+      }
+      // Paste newsletter
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && workspace.hasClipboard) {
+        const activeElement = document.activeElement;
+        const isInputFocused = activeElement?.tagName === 'INPUT' || 
+                              activeElement?.tagName === 'TEXTAREA' || 
+                              activeElement?.isContentEditable;
+        if (!isInputFocused) {
+          e.preventDefault();
+          workspace.pasteNewsletter();
+        }
+      }
+      // New newsletter
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !showLanding) {
+        e.preventDefault();
+        workspace.addNewsletter(blankTemplate);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+  }, [workspace, showLanding]);
 
-  const handleTemplateSelect = (template) => {
-    setSelectedTemplate(template);
-    setNewsletter(JSON.parse(JSON.stringify(template)));
-  };
+  const handleStart = useCallback(() => {
+    workspace.addNewsletter(blankTemplate);
+    setShowLanding(false);
+  }, [workspace]);
 
-  const handleContinueEditing = () => {
-    const saved = loadSavedNewsletter();
-    if (saved) {
-      setSelectedTemplate({ name: saved.name || 'Saved Newsletter' });
-      setNewsletter(saved);
-    }
-  };
-
-  const handleSectionClick = (sectionId) => {
-    setSelectedSection(sectionId);
-  };
+  const handleContinueEditing = useCallback(() => {
+    setShowLanding(false);
+  }, []);
 
   const handleSectionUpdate = useCallback((sectionId, updates) => {
-    setNewsletter(prev => ({
+    if (!workspace.activeNewsletterId) return;
+    workspace.updateNewsletter(workspace.activeNewsletterId, prev => ({
       ...prev,
       sections: prev.sections.map(section =>
         section.id === sectionId ? { ...section, ...updates } : section
       )
     }));
-  }, [setNewsletter]);
+  }, [workspace]);
 
-  const handleToggleUnlock = useCallback(() => {
-    setIsUnlocked(prev => !prev);
-  }, []);
-
-  const handleAddSection = (sectionType) => {
-    const newSection = {
-      id: `section-${Date.now()}`,
-      type: sectionType,
-      ...getDefaultSectionData(sectionType)
-    };
-    
-    setNewsletter(prev => ({
+  const handleAddSection = useCallback((sectionType) => {
+    if (!workspace.activeNewsletterId) return;
+    workspace.updateNewsletter(workspace.activeNewsletterId, prev => ({
       ...prev,
-      sections: [...prev.sections, newSection]
+      sections: [...prev.sections, {
+        id: `section-${Date.now()}`,
+        type: sectionType,
+        ...getDefaultSectionData(sectionType)
+      }]
     }));
-  };
+  }, [workspace]);
 
   const handleDeleteSection = useCallback((sectionId) => {
-    setNewsletter(prev => ({
+    if (!workspace.activeNewsletterId) return;
+    workspace.updateNewsletter(workspace.activeNewsletterId, prev => ({
       ...prev,
       sections: prev.sections.filter(s => s.id !== sectionId)
     }));
-    setSelectedSection(null);
-  }, [setNewsletter]);
+    workspace.setSelectedSection(null);
+  }, [workspace]);
 
   const handleMoveSection = useCallback((sectionId, direction) => {
-    setNewsletter(prev => {
+    if (!workspace.activeNewsletterId) return;
+    workspace.updateNewsletter(workspace.activeNewsletterId, prev => {
       const sections = [...prev.sections];
       const index = sections.findIndex(s => s.id === sectionId);
       if (direction === 'up' && index > 0) {
@@ -119,22 +193,38 @@ function AppContent() {
       }
       return { ...prev, sections };
     });
-  }, [setNewsletter]);
+  }, [workspace]);
 
   const handleReorderSections = useCallback((fromIndex, toIndex) => {
-    setNewsletter(prev => {
+    if (!workspace.activeNewsletterId) return;
+    workspace.updateNewsletter(workspace.activeNewsletterId, prev => {
       const sections = [...prev.sections];
       const [removed] = sections.splice(fromIndex, 1);
       sections.splice(toIndex, 0, removed);
       return { ...prev, sections };
     });
-  }, [setNewsletter]);
+  }, [workspace]);
 
-  const handleExport = () => {
-    const html = exportToHTML(newsletter);
-    setExportedHTML(html);
-    setShowExportModal(true);
-  };
+  const handleApplyColor = useCallback((color) => {
+    if (!workspace.activeNewsletterId || !workspace.selectedSectionId) return;
+    const section = workspace.activeNewsletter?.sections?.find(s => s.id === workspace.selectedSectionId);
+    if (!section) return;
+    
+    // Apply color based on section type
+    if (section.type === 'header' || section.type === 'footer' || section.type === 'sectionHeader' || section.type === 'marquee') {
+      handleSectionUpdate(workspace.selectedSectionId, { backgroundColor: color });
+    } else if (section.type === 'text') {
+      handleSectionUpdate(workspace.selectedSectionId, { color: color });
+    }
+  }, [workspace, handleSectionUpdate]);
+
+  const handleExport = useCallback(() => {
+    if (workspace.activeNewsletter) {
+      const html = exportToHTML(workspace.activeNewsletter);
+      setExportedHTML(html);
+      setShowExportModal(true);
+    }
+  }, [workspace.activeNewsletter]);
 
   const handleCopyHTML = async () => {
     await navigator.clipboard.writeText(exportedHTML);
@@ -147,7 +237,7 @@ function AppContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `newsletter-${Date.now()}.html`;
+    a.download = `${workspace.activeNewsletterName || 'newsletter'}-${Date.now()}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -155,7 +245,8 @@ function AppContent() {
   };
 
   const handleCopyDesign = async () => {
-    const html = exportForGmail(newsletter);
+    if (!workspace.activeNewsletter) return;
+    const html = exportForGmail(workspace.activeNewsletter);
     
     try {
       const blob = new Blob([html], { type: 'text/html' });
@@ -180,26 +271,26 @@ function AppContent() {
     }
   };
 
-  const handleBackToTemplates = () => {
-    setSelectedTemplate(null);
-    setNewsletter(null);
-    setSelectedSection(null);
-  };
+  const handleBackToLanding = useCallback(() => {
+    setShowLanding(true);
+  }, []);
 
-  const handleStartFresh = () => {
-    clearSavedNewsletter();
-    setSelectedTemplate(null);
-    setNewsletter(null);
-    setSelectedSection(null);
-  };
+  const handleStartFresh = useCallback(() => {
+    localStorage.removeItem(WORKSPACE_STORAGE_KEY);
+    workspace.loadState({ newsletters: [], zoom: 1 });
+    setShowLanding(true);
+  }, [workspace]);
 
-  if (!selectedTemplate) {
+  const handleZoomReset = useCallback((value = 1) => {
+    workspace.setZoom(value);
+  }, [workspace]);
+
+  if (showLanding) {
     return (
       <TemplateSelector 
-        onSelectTemplate={handleTemplateSelect}
-        hasSavedNewsletter={hasSavedNewsletter()}
+        onSelectTemplate={handleStart}
+        hasSavedNewsletter={workspace.newsletters.length > 0}
         onContinueEditing={handleContinueEditing}
-        lastSaveTime={getLastSaveTime()}
       />
     );
   }
@@ -212,11 +303,11 @@ function AppContent() {
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={handleBackToTemplates}
+            onClick={handleBackToLanding}
             className="text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft className="w-4 h-4" />
-            Templates
+            Home
           </Button>
           
           <div className="h-5 w-px bg-zinc-200" />
@@ -224,28 +315,40 @@ function AppContent() {
           <div className="flex items-center gap-2">
             <Mail className="w-4 h-4 text-zinc-400" />
             <span className="text-sm font-medium text-zinc-700">
-              {newsletter?.name || 'Newsletter'}
+              {workspace.activeNewsletterName || 'Workspace'}
+            </span>
+            <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">
+              {workspace.newsletters.length} {workspace.newsletters.length === 1 ? 'newsletter' : 'newsletters'}
             </span>
           </div>
 
-          {/* Autosave indicator - static to avoid re-renders */}
           <div className="flex items-center gap-1.5 text-xs text-zinc-400">
             <Save className="w-3 h-3" />
             <span>Auto-saved</span>
           </div>
         </div>
 
-        {/* Center - Undo/Redo */}
+        {/* Center - Actions + Zoom */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            onClick={undo}
-            disabled={!canUndo}
-            className={cn(
-              "text-zinc-500",
-              !canUndo && "opacity-40 cursor-not-allowed"
-            )}
+            onClick={() => workspace.addNewsletter(blankTemplate)}
+            className="text-zinc-500 hover:text-zinc-900"
+            title="New newsletter (⌘N)"
+          >
+            <Plus className="w-4 h-4" />
+            New
+          </Button>
+          
+          <div className="w-px h-4 bg-zinc-200 mx-2" />
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={workspace.undo}
+            disabled={!workspace.canUndo}
+            className={cn("text-zinc-500", !workspace.canUndo && "opacity-40 cursor-not-allowed")}
             title="Undo (⌘Z)"
           >
             <Undo2 className="w-4 h-4" />
@@ -253,70 +356,137 @@ function AppContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={redo}
-            disabled={!canRedo}
-            className={cn(
-              "text-zinc-500",
-              !canRedo && "opacity-40 cursor-not-allowed"
-            )}
+            onClick={workspace.redo}
+            disabled={!workspace.canRedo}
+            className={cn("text-zinc-500", !workspace.canRedo && "opacity-40 cursor-not-allowed")}
             title="Redo (⌘⇧Z)"
           >
             <Redo2 className="w-4 h-4" />
           </Button>
+
+          <div className="w-px h-4 bg-zinc-200 mx-2" />
+
+          {/* Zoom Controls */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={workspace.zoomOut}
+            className="text-zinc-500 h-8 w-8 p-0"
+            title="Zoom out"
+          >
+            <Minus className="w-4 h-4" />
+          </Button>
+          <span className="text-xs font-mono text-zinc-500 w-10 text-center">
+            {Math.round(workspace.zoom * 100)}%
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={workspace.zoomIn}
+            className="text-zinc-500 h-8 w-8 p-0"
+            title="Zoom in"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            onClick={handleCopyDesign} 
-            size="sm"
-            variant={copiedDesign ? "default" : "outline"}
-            className={cn(
-              copiedDesign && "bg-emerald-600 hover:bg-emerald-600 border-emerald-600"
-            )}
-          >
-            {copiedDesign ? (
-              <>
-                <Check className="w-4 h-4" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Clipboard className="w-4 h-4" />
-                Copy for Gmail
-              </>
-            )}
-          </Button>
-          <Button onClick={handleExport} size="sm">
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
+          {workspace.activeNewsletter && (
+            <>
+              <Button 
+                onClick={handleCopyDesign} 
+                size="sm"
+                variant={copiedDesign ? "default" : "outline"}
+                className={cn(
+                  copiedDesign && "bg-emerald-600 hover:bg-emerald-600 border-emerald-600"
+                )}
+              >
+                {copiedDesign ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Clipboard className="w-4 h-4" />
+                    Copy for Gmail
+                  </>
+                )}
+              </Button>
+              <Button onClick={handleExport} size="sm">
+                <Download className="w-4 h-4" />
+                Export
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Editor Canvas */}
-        <div className="flex-1 overflow-y-auto p-8 bg-zinc-100/50">
-          <NewsletterEditor
-            newsletter={newsletter}
-            selectedSection={selectedSection}
-            onSectionClick={handleSectionClick}
-            onAddSection={handleAddSection}
-            onReorderSections={handleReorderSections}
-            onSectionUpdate={handleSectionUpdate}
-            isUnlocked={isUnlocked}
-          />
-        </div>
-
-        {/* Sidebar */}
-        <SidebarEditor
-          newsletter={newsletter}
-          selectedSection={selectedSection}
-          onSectionUpdate={handleSectionUpdate}
-          onDeleteSection={handleDeleteSection}
-          onMoveSection={handleMoveSection}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Floating Toolbar - Add Section + Reorder */}
+        <FloatingToolbar
+          onAddSection={handleAddSection}
+          hasActiveNewsletter={!!workspace.activeNewsletterId}
           isUnlocked={isUnlocked}
-          onToggleUnlock={handleToggleUnlock}
+          onToggleUnlock={() => setIsUnlocked(prev => !prev)}
+        />
+
+        {/* Floating Theme Bar */}
+        <FloatingThemeBar
+          onSelectColor={handleApplyColor}
+          onSelectGradient={(start, end) => {
+            if (workspace.selectedSectionId) {
+              handleSectionUpdate(workspace.selectedSectionId, { 
+                backgroundColor: start, 
+                gradientEnd: end 
+              });
+            }
+          }}
+          selectedSection={workspace.selectedSectionId}
+        />
+
+        {/* Section Action Bar - appears next to selected section */}
+        {workspace.selectedSectionId && workspace.activeNewsletter && (
+          <SectionActionBar
+            section={workspace.activeNewsletter.sections?.find(s => s.id === workspace.selectedSectionId)}
+            onUpdate={(updates) => handleSectionUpdate(workspace.selectedSectionId, updates)}
+            onDelete={() => handleDeleteSection(workspace.selectedSectionId)}
+            onDuplicate={() => {
+              const section = workspace.activeNewsletter.sections?.find(s => s.id === workspace.selectedSectionId);
+              if (section) {
+                workspace.updateNewsletter(workspace.activeNewsletterId, prev => ({
+                  ...prev,
+                  sections: [...prev.sections, { ...section, id: `section-${Date.now()}` }]
+                }));
+              }
+            }}
+            onMoveUp={() => handleMoveSection(workspace.selectedSectionId, 'up')}
+            onMoveDown={() => handleMoveSection(workspace.selectedSectionId, 'down')}
+            position={{ top: 80, right: 20 }}
+          />
+        )}
+
+        {/* Workspace Canvas */}
+        <WorkspaceCanvas
+          zoom={workspace.zoom}
+          newsletters={workspace.newsletters}
+          activeNewsletterId={workspace.activeNewsletterId}
+          selectedSectionId={workspace.selectedSectionId}
+          onZoomIn={workspace.zoomIn}
+          onZoomOut={workspace.zoomOut}
+          onZoomReset={handleZoomReset}
+          onAddNewsletter={() => workspace.addNewsletter(blankTemplate)}
+          onSelectNewsletter={workspace.setActiveNewsletter}
+          onSelectSection={workspace.setSelectedSection}
+          onRenameNewsletter={workspace.renameNewsletter}
+          onDuplicateNewsletter={workspace.duplicateNewsletter}
+          onDeleteNewsletter={workspace.deleteNewsletter}
+          onUpdateNewsletterPosition={workspace.updateNewsletterPosition}
+          onSectionUpdate={handleSectionUpdate}
+          onAddSection={handleAddSection}
+          onReorderSections={handleReorderSections}
+          isUnlocked={isUnlocked}
         />
       </div>
 
@@ -334,7 +504,9 @@ function AppContent() {
             <div className="flex items-center justify-between p-5 border-b border-zinc-100">
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900">Export Newsletter</h2>
-                <p className="text-sm text-zinc-500">Copy or download the HTML code</p>
+                <p className="text-sm text-zinc-500">
+                  Exporting: {workspace.activeNewsletterName || 'Newsletter'}
+                </p>
               </div>
               <Button 
                 variant="ghost" 
@@ -399,13 +571,13 @@ function getDefaultSectionData(sectionType) {
       heroImageHeight: 200,
       heroImageFit: 'cover',
       showHeroPlaceholder: true,
-      title: 'Newsletter',
+      title: '',
       titleFontSize: 28,
       titleFontWeight: '700',
       titleFontStyle: 'normal',
       titleLetterSpacing: '-0.02em',
       titleLineHeight: 1.2,
-      subtitle: 'Your Newsletter Title',
+      subtitle: '',
       subtitleFontSize: 16,
       subtitleFontWeight: '400',
       subtitleLetterSpacing: '0',

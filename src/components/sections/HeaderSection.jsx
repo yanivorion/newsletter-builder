@@ -92,6 +92,10 @@ function InlineSpacerHandle({ value, onChange, min = 0, max = 100, label, isEdit
 function HeaderSection({ 
   backgroundColor, 
   gradientEnd, 
+  backgroundType = 'gradient',
+  backgroundImage,
+  overlayColor = '#000000',
+  overlayOpacity = 0,
   logo, 
   logoWidth = 120,
   logoHeight = 'auto',
@@ -127,7 +131,10 @@ function HeaderSection({
   spacingTitleToSubtitle = 8,
   // Edit mode
   isEditing = false,
-  onSpacingChange
+  onSpacingChange,
+  // Resize
+  minHeight,
+  verticalAlign = 'center' // top, center, bottom
 }) {
   const handleSpacingChange = (field, value) => {
     if (onSpacingChange) {
@@ -135,13 +142,43 @@ function HeaderSection({
     }
   };
 
+  // Determine background style based on type
+  let backgroundStyle = {};
+  if (backgroundType === 'image' && backgroundImage) {
+    backgroundStyle = {
+      backgroundImage: `url(${backgroundImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    };
+  } else if (backgroundType === 'gradient' || gradientEnd) {
+    backgroundStyle = {
+      background: `linear-gradient(135deg, ${backgroundColor || '#04D1FC'} 0%, ${gradientEnd || '#17A298'} 100%)`
+    };
+  } else {
+    backgroundStyle = {
+      backgroundColor: backgroundColor || '#04D1FC'
+    };
+  }
+
+  // Map vertical align to flexbox
+  const alignMap = {
+    top: 'flex-start',
+    center: 'center',
+    bottom: 'flex-end'
+  };
+
   const headerStyle = {
-    background: `linear-gradient(135deg, ${backgroundColor || '#04D1FC'} 0%, ${gradientEnd || '#17A298'} 100%)`,
+    ...backgroundStyle,
     paddingLeft: `${paddingHorizontal}px`,
     paddingRight: `${paddingHorizontal}px`,
     textAlign: 'center',
     color: textColor,
-    position: 'relative'
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: minHeight ? `${minHeight}px` : undefined,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: alignMap[verticalAlign] || 'center'
   };
 
   const logoContainerStyle = {
@@ -212,6 +249,21 @@ function HeaderSection({
 
   return (
     <div style={headerStyle}>
+      {/* Background overlay */}
+      {backgroundType === 'image' && backgroundImage && overlayOpacity > 0 && (
+        <div 
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: overlayColor,
+            opacity: overlayOpacity / 100,
+            zIndex: 1
+          }}
+        />
+      )}
+      
+      {/* Content wrapper with z-index */}
+      <div style={{ position: 'relative', zIndex: 2 }}>
       {/* Top Padding Handle */}
       <InlineSpacerHandle
         value={paddingTop}
@@ -321,6 +373,7 @@ function HeaderSection({
           {dateBadgeText}
         </div>
       )}
+      </div>
     </div>
   );
 }

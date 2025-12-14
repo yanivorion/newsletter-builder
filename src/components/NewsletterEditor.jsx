@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { 
   Plus, 
   Type, 
@@ -9,6 +9,7 @@ import {
   Heading,
   PanelBottom,
   GripVertical,
+  GripHorizontal,
   MoveHorizontal,
   Film
 } from 'lucide-react';
@@ -23,6 +24,62 @@ import RecipeSection from './sections/RecipeSection';
 import FooterSection from './sections/FooterSection';
 import MarqueeSection from './sections/MarqueeSection';
 import ImageSequenceSection from './sections/ImageSequenceSection';
+import ShapeDivider from './ShapeDivider';
+
+// Section Resize Handle Component - for resizing image height in collage sections
+function SectionResizeHandle({ currentValue, onResize, sectionRef, label = 'Height' }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [displayValue, setDisplayValue] = useState(currentValue || 200);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(0);
+
+  const handleMouseDown = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    startYRef.current = e.clientY;
+    
+    // Use current value as starting point
+    startHeightRef.current = currentValue || 200;
+    setDisplayValue(startHeightRef.current);
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaY = moveEvent.clientY - startYRef.current;
+      const newHeight = Math.max(50, startHeightRef.current + deltaY);
+      setDisplayValue(Math.round(newHeight));
+      onResize(Math.round(newHeight));
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [currentValue, onResize]);
+
+  return (
+    <div 
+      className={cn(
+        "cursor-ns-resize z-40",
+        "transition-all duration-150"
+      )}
+      onMouseDown={handleMouseDown}
+    >
+      <div className={cn(
+        "flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium",
+        "bg-zinc-900 text-white shadow-xl border-2 border-white",
+        "transition-all duration-150",
+        isDragging ? "scale-110 bg-[#04D1FC]" : "hover:scale-105 hover:bg-zinc-800"
+      )}>
+        <GripHorizontal className="w-4 h-4" />
+        <span>Drag to resize • {displayValue}px</span>
+      </div>
+    </div>
+  );
+}
 
 const sectionTypes = [
   { type: 'header', label: 'Header', icon: LayoutTemplate },
@@ -43,7 +100,8 @@ function NewsletterEditor({
   onAddSection,
   onReorderSections,
   onSectionUpdate,
-  isUnlocked 
+  isUnlocked,
+  compact = false
 }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -104,10 +162,19 @@ function NewsletterEditor({
     dragCounter.current = 0;
   };
 
+  // Store refs for each section
+  const sectionRefs = useRef({});
+
   const renderSection = (section, index) => {
     const isSelected = selectedSection === section.id;
     const isDragged = draggedIndex === index;
     const isDragOver = dragOverIndex === index;
+
+    // Create ref for this section if not exists
+    if (!sectionRefs.current[section.id]) {
+      sectionRefs.current[section.id] = React.createRef();
+    }
+    const sectionRef = sectionRefs.current[section.id];
 
     const sectionComponents = {
       header: HeaderSection,
@@ -142,7 +209,8 @@ function NewsletterEditor({
 
     return (
       <div 
-        key={section.id} 
+        key={section.id}
+        ref={sectionRef}
         draggable={isUnlocked}
         onDragStart={(e) => handleDragStart(e, index)}
         onDragEnd={handleDragEnd}
@@ -157,8 +225,31 @@ function NewsletterEditor({
           isDragOver && "ring-2 ring-[#04D1FC] ring-offset-2 rounded-sm",
           isUnlocked && "cursor-grab active:cursor-grabbing"
         )}
+        style={{ 
+          // For image sections: height auto, resize controls imageHeight
+          // For other sections: minHeight for vertical alignment
+          ...(section.type !== 'imageCollage' && section.type !== 'imageSequence' && section.minHeight ? {
+            minHeight: `${section.minHeight}px`,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: section.verticalAlign === 'top' ? 'flex-start' : 
+                           section.verticalAlign === 'bottom' ? 'flex-end' : 'center'
+          } : {})
+        }}
         onClick={() => !isUnlocked && onSectionClick(section.id)}
       >
+        {/* Top Shape Divider */}
+        {section.topDivider && section.topDivider !== 'none' && (
+          <ShapeDivider
+            dividerId={section.topDivider}
+            position="top"
+            flip={section.topDividerFlip}
+            flipV={section.topDividerFlipV}
+            color={section.topDividerColor || '#FFFFFF'}
+            height={section.topDividerHeight || 40}
+          />
+        )}
+
         {/* Drag Handle - visible when unlocked */}
         {isUnlocked && (
           <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-zinc-100/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
@@ -169,10 +260,55 @@ function NewsletterEditor({
         <SectionComponent 
           {...section} 
           isEditing={isSelected && section.type === 'header'}
+          isSelected={isSelected}
           onSpacingChange={section.type === 'header' ? (field, value) => {
             onSectionUpdate?.(section.id, { [field]: value });
           } : undefined}
+          onContentChange={
+            section.type === 'text' ? (newContent) => {
+              onSectionUpdate?.(section.id, { content: newContent });
+            } : section.type === 'sectionHeader' ? (newContent) => {
+              onSectionUpdate?.(section.id, { text: newContent });
+            } : undefined
+          }
         />
+
+        {/* Bottom Shape Divider */}
+        {section.bottomDivider && section.bottomDivider !== 'none' && (
+          <ShapeDivider
+            dividerId={section.bottomDivider}
+            position="bottom"
+            flip={section.bottomDividerFlip}
+            flipV={section.bottomDividerFlipV}
+            color={section.bottomDividerColor || '#FFFFFF'}
+            height={section.bottomDividerHeight || 40}
+          />
+        )}
+
+        {/* Resize Handle - visible when selected */}
+        {isSelected && !isUnlocked && (
+          <div className="w-full py-2 bg-gradient-to-t from-zinc-100 to-transparent flex items-center justify-center">
+            <SectionResizeHandle
+              currentValue={
+                section.type === 'imageCollage' || section.type === 'imageSequence'
+                  ? (section.imageHeight || 200)
+                  : (section.minHeight || 150)
+              }
+              label={
+                section.type === 'imageCollage' || section.type === 'imageSequence'
+                  ? "Image Height"
+                  : "Section Height"
+              }
+              onResize={(newValue) => {
+                if (section.type === 'imageCollage' || section.type === 'imageSequence') {
+                  onSectionUpdate?.(section.id, { imageHeight: newValue });
+                } else {
+                  onSectionUpdate?.(section.id, { minHeight: newValue });
+                }
+              }}
+            />
+          </div>
+        )}
         
         {/* Selection indicator */}
         {isSelected && !isUnlocked && (
@@ -195,29 +331,31 @@ function NewsletterEditor({
   };
 
   return (
-    <div className="flex flex-col gap-6 relative">
-      {/* Floating Add Section Bar */}
-      <div className="sticky top-0 z-40 mx-auto">
-        <div className="flex items-center gap-1.5 p-1.5 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-zinc-200/80">
-          <span className="text-[10px] text-zinc-400 px-2 font-medium uppercase tracking-wide">Add</span>
-          <div className="h-4 w-px bg-zinc-200" />
-          {sectionTypes.map(({ type, label, icon: Icon }) => (
-            <Button
-              key={type}
-              variant="ghost"
-              size="sm"
-              onClick={() => onAddSection(type)}
-              className="text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 px-2 h-8"
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span className="text-[11px]">{label}</span>
-            </Button>
-          ))}
+    <div className={cn("flex flex-col relative", compact ? "gap-0" : "gap-6")}>
+      {/* Floating Add Section Bar - hidden in compact mode */}
+      {!compact && (
+        <div className="sticky top-0 z-40 mx-auto">
+          <div className="flex items-center gap-1.5 p-1.5 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-zinc-200/80">
+            <span className="text-[10px] text-zinc-400 px-2 font-medium uppercase tracking-wide">Add</span>
+            <div className="h-4 w-px bg-zinc-200" />
+            {sectionTypes.map(({ type, label, icon: Icon }) => (
+              <Button
+                key={type}
+                variant="ghost"
+                size="sm"
+                onClick={() => onAddSection(type)}
+                className="text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 px-2 h-8"
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span className="text-[11px]">{label}</span>
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Unlock Indicator */}
-      {isUnlocked && (
+      {/* Unlock Indicator - hidden in compact mode */}
+      {!compact && isUnlocked && (
         <div className="mx-auto -mt-2">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#04D1FC]/10 border border-[#04D1FC]/20 rounded-full text-xs font-medium text-[#04D1FC]">
             <GripVertical className="w-3.5 h-3.5" />
@@ -227,8 +365,11 @@ function NewsletterEditor({
       )}
 
       {/* Newsletter Preview */}
-      <div className="mx-auto w-full max-w-[600px]">
-        <div className="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
+      <div className={cn("w-full", !compact && "mx-auto max-w-[600px]")}>
+        <div className={cn(
+          "bg-white overflow-hidden",
+          !compact && "rounded-xl shadow-sm border border-zinc-200"
+        )}>
           {newsletter.sections.map((section, index) => renderSection(section, index))}
         </div>
       </div>

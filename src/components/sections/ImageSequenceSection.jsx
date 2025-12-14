@@ -9,8 +9,10 @@ function ImageSequenceSection({
   showThumbnails = false,
   showFrameCounter = false,
   autoPlay = true,
-  previewHeight = 300
+  previewHeight = 300,
+  imageHeight // Use imageHeight if provided, otherwise fall back to previewHeight
 }) {
+  const height = imageHeight || previewHeight;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const animationRef = useRef(null);
@@ -48,7 +50,7 @@ function ImageSequenceSection({
         <div 
           style={{
             width: '100%',
-            height: `${previewHeight}px`,
+            height: `${height}px`,
             backgroundColor: '#f4f4f5',
             display: 'flex',
             flexDirection: 'column',
