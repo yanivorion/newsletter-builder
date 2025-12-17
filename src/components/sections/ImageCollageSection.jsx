@@ -15,7 +15,8 @@ function ImageCollageSection({
   backgroundImage,
   gradientEnd,
   overlayColor = '#000000',
-  overlayOpacity = 0
+  overlayOpacity = 0,
+  padding: sectionPadding
 }) {
   const preset = getPresetById(layout) || getPresetById('featured-left');
   
@@ -37,7 +38,7 @@ function ImageCollageSection({
     };
   }
 
-  const padding = 16;
+  const padding = sectionPadding ?? 20;
   const actualImageHeight = imageHeight || 200;
   
   // Container style - always auto height based on content
@@ -138,10 +139,9 @@ function ImageCollageSection({
               style={{
                 gridColumn: `${cell.col} / span ${cell.colSpan}`,
                 gridRow: `${cell.row} / span ${cell.rowSpan}`,
-                borderRadius: '8px',
+                borderRadius: '0px',
                 overflow: 'hidden',
-                backgroundColor: imageBg || '#f4f4f5',
-                minHeight: '80px',
+                backgroundColor: imageBg || 'transparent',
                 position: 'relative'
               }}
             >

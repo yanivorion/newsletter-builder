@@ -15,6 +15,8 @@ function SectionHeaderSection({
   overlayOpacity = 0,
   minHeight,
   verticalAlign = 'center', // top, center, bottom
+  textDirection = 'rtl',
+  textAlign = 'right',
   // Inline editing props
   isSelected = false,
   onContentChange
@@ -51,7 +53,8 @@ function SectionHeaderSection({
     ...backgroundStyle,
     color: color || '#FFFFFF',
     padding: `${padding || 14}px 24px`,
-    textAlign: 'center',
+    textAlign: textAlign || 'center',
+    direction: textDirection || 'rtl',
     fontFamily: 'Inter, -apple-system, sans-serif',
     fontSize: `${fontSize || 14}px`,
     fontWeight: fontWeight || 600,
@@ -63,7 +66,7 @@ function SectionHeaderSection({
     display: 'flex',
     flexDirection: 'column',
     justifyContent: alignMap[verticalAlign] || 'center',
-    alignItems: 'center'
+    alignItems: textAlign === 'left' ? 'flex-start' : textAlign === 'right' ? 'flex-end' : 'center'
   };
 
   const textStyle = {

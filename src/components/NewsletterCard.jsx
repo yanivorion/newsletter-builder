@@ -119,7 +119,7 @@ function NewsletterCard({
             className={cn(
               "w-2 h-2 rounded-full transition-all flex-shrink-0",
               isActive ? "bg-[#04D1FC]" : "bg-zinc-300"
-            )}
+            )} 
           />
           
           {/* Name - Editable */}

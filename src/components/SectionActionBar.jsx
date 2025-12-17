@@ -32,13 +32,27 @@ import {
   Loader2,
   Sparkles,
   X,
-  User
+  User,
+  Users,
+  Film,
+  Play,
+  Pause,
+  FileImage,
+  Clock,
+  Settings,
+  Move,
+  Smile,
+  Languages,
+  SeparatorHorizontal,
+  LayoutGrid
 } from 'lucide-react';
+import { exportSequenceAsGif, exportMarqueeAsGif, downloadBlob } from '../utils/sequenceGifExport';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
 import CollagePresetPicker from './CollagePresetPicker';
 import ShapeDividerPicker from './ShapeDividerPicker';
 import { mediaKit, getLogosByCategory } from '../lib/mediaKit';
+import IconPicker, { getIconByName } from './IconPicker';
 
 // Theme colors for dividers
 const DIVIDER_THEME_COLORS = [
@@ -77,29 +91,37 @@ function SectionActionBar({
   onDuplicate,
   onMoveUp,
   onMoveDown,
-  position = { top: 0, right: -320 }
+  onReplace
 }) {
   const [expanded, setExpanded] = useState({});
   const [mediaCategory, setMediaCategory] = useState('all');
   const [isProcessing, setIsProcessing] = useState(false);
   const [prevSectionId, setPrevSectionId] = useState(null);
+  const [isExportingGif, setIsExportingGif] = useState(false);
+  const [gifProgress, setGifProgress] = useState(0);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const fileInputRef = useRef(null);
   const bgImageInputRef = useRef(null);
+  const sequenceInputRef = useRef(null);
   const barRef = useRef(null);
   
-  // Draggable state
+  // Draggable state - use ref to persist position across section changes
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [barPosition, setBarPosition] = useState({ x: 0, y: 0 });
-  const [hasBeenDragged, setHasBeenDragged] = useState(false);
+  // Use a ref for position so it persists and doesn't trigger re-renders
+  const savedPosition = useRef(null);
+  const [barPosition, setBarPosition] = useState(() => {
+    // Default position: top-right area
+    return { x: window.innerWidth - 340, y: 80 };
+  });
 
-  // Reset position AND close all tabs when section changes
+  // Close all tabs when section changes, but KEEP position
   useEffect(() => {
     if (section?.id !== prevSectionId) {
-      setBarPosition({ x: 0, y: 0 });
-      setHasBeenDragged(false); // Reset drag state so it goes back to default position
       setExpanded({}); // Close all tabs
+      setShowIconPicker(false); // Close icon picker
       setPrevSectionId(section?.id);
+      // Position is preserved via barPosition state
     }
   }, [section?.id, prevSectionId]);
 
@@ -117,16 +139,8 @@ function SectionActionBar({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       });
-      // Store initial position on first drag
-      if (!hasBeenDragged) {
-        setBarPosition({
-          x: rect.left,
-          y: rect.top
-        });
-        setHasBeenDragged(true);
-      }
     }
-  }, [hasBeenDragged]);
+  }, []);
 
   const handleDrag = useCallback((e) => {
     if (!isDragging) return;
@@ -174,7 +188,12 @@ function SectionActionBar({
   };
 
   const handleColorChange = useCallback((field, color) => {
-    onUpdate({ [field]: color });
+    // When setting backgroundColor as solid, clear the gradient
+    if (field === 'backgroundColor') {
+      onUpdate({ [field]: color, backgroundType: 'solid', gradientEnd: null });
+    } else {
+      onUpdate({ [field]: color });
+    }
   }, [onUpdate]);
 
   // Remove background from image
@@ -562,6 +581,153 @@ function SectionActionBar({
     </ActionGroup>
   );
 
+  // Reusable text direction controls (RTL/LTR) for Hebrew/Arabic support
+  const renderTextDirectionControls = () => (
+    <ActionGroup label="Direction" icon={Languages} expanded={expanded.direction} onToggle={() => toggleExpand('direction')}>
+      <div className="space-y-3">
+        {/* Text Direction */}
+        <div className="space-y-1.5">
+          <p className="text-[9px] text-zinc-400 font-medium">Text Direction</p>
+          <div className="flex gap-1">
+            <Button
+              variant={(section.textDirection || 'ltr') === 'ltr' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onUpdate({ textDirection: 'ltr' })}
+              className="flex-1 h-7 text-xs"
+            >
+              LTR →
+            </Button>
+            <Button
+              variant={section.textDirection === 'rtl' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onUpdate({ textDirection: 'rtl' })}
+              className="flex-1 h-7 text-xs"
+            >
+              ← RTL
+            </Button>
+          </div>
+        </div>
+        
+        {/* Text Alignment */}
+        <div className="space-y-1.5">
+          <p className="text-[9px] text-zinc-400 font-medium">Alignment</p>
+          <div className="flex gap-0.5">
+            {[
+              { align: 'left', Icon: AlignLeft },
+              { align: 'center', Icon: AlignCenter },
+              { align: 'right', Icon: AlignRight },
+            ].map(({ align, Icon }) => (
+              <Button
+                key={align}
+                variant={(section.textAlign || 'left') === align ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onUpdate({ textAlign: align })}
+                className="flex-1 h-7 w-7 p-0"
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </ActionGroup>
+  );
+
+  // Reusable line divider controls (bottom border)
+  const renderLineDividerControls = () => (
+    <ActionGroup label="Line Divider" icon={SeparatorHorizontal} expanded={expanded.lineDivider} onToggle={() => toggleExpand('lineDivider')}>
+      <div className="space-y-3">
+        {/* Enable/Disable */}
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-zinc-500">Show Bottom Line</span>
+          <button
+            onClick={() => onUpdate({ dividerBottom: !section.dividerBottom })}
+            className={cn(
+              "w-9 h-5 rounded-full transition-colors relative",
+              section.dividerBottom ? "bg-[#04D1FC]" : "bg-zinc-200"
+            )}
+          >
+            <div
+              className={cn(
+                "w-4 h-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform",
+                section.dividerBottom ? "translate-x-4" : "translate-x-0.5"
+              )}
+            />
+          </button>
+        </div>
+        
+        {section.dividerBottom && (
+          <>
+            {/* Color */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Color</span>
+              <div className="flex gap-1 flex-1">
+                {['#E5E5E5', '#D2D2D7', '#04D1FC', '#120F0F'].map(color => (
+                  <button
+                    key={color}
+                    onClick={() => onUpdate({ dividerColor: color })}
+                    className={cn(
+                      "w-5 h-5 rounded border-2 transition-transform hover:scale-110",
+                      (section.dividerColor || '#E5E5E5') === color ? "border-zinc-900" : "border-zinc-200"
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={section.dividerColor || '#E5E5E5'}
+                  onChange={(e) => onUpdate({ dividerColor: e.target.value })}
+                  className="w-5 h-5 rounded cursor-pointer border border-zinc-200"
+                />
+              </div>
+            </div>
+            
+            {/* Thickness */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Thickness</span>
+              <div className="flex gap-1 flex-1">
+                {[1, 2, 3, 4].map(t => (
+                  <Button
+                    key={t}
+                    variant={(section.dividerThickness || 1) === t ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => onUpdate({ dividerThickness: t })}
+                    className="flex-1 h-6 text-[10px]"
+                  >
+                    {t}px
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </ActionGroup>
+  );
+
+  // Reusable font family control
+  const renderFontFamilyControl = () => (
+    <ActionGroup label="Font Family" icon={Type} expanded={expanded.fontFamily} onToggle={() => toggleExpand('fontFamily')}>
+      <div className="space-y-2">
+        <select
+          value={section.fontFamily || 'Noto Sans Hebrew'}
+          onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+          className="w-full h-8 text-xs rounded border border-zinc-200 px-2"
+          dir="rtl"
+        >
+          <option value="Noto Sans Hebrew">Noto Sans Hebrew (עברית)</option>
+          <option value="Assistant">Assistant (עברית)</option>
+          <option value="Heebo">Heebo (עברית)</option>
+          <option value="Poppins">Poppins (English)</option>
+          <option value="Inter">Inter (English)</option>
+        </select>
+        <p className="text-[9px] text-zinc-400">
+          Hebrew fonts: Noto Sans Hebrew, Assistant, Heebo
+        </p>
+      </div>
+    </ActionGroup>
+  );
+
   // Render section-specific controls
   const renderControls = () => {
     switch (section.type) {
@@ -573,6 +739,8 @@ function SectionActionBar({
         return renderSectionHeaderControls();
       case 'imageCollage':
         return renderImageCollageControls();
+      case 'imageSequence':
+        return renderImageSequenceControls();
       case 'marquee':
         return renderMarqueeControls();
       case 'footer':
@@ -581,6 +749,34 @@ function SectionActionBar({
         return renderProfileCardsControls();
       case 'recipe':
         return renderRecipeControls();
+      case 'stats':
+        return renderStatsControls();
+      case 'featureGrid':
+        return renderFeatureGridControls();
+      case 'specsTable':
+        return renderSpecsTableControls();
+      case 'contactCards':
+        return renderContactCardsControls();
+      case 'steps':
+        return renderStepsControls();
+      case 'accentText':
+        return renderAccentTextControls();
+      case 'featureCards':
+        return renderFeatureCardsControls();
+      case 'updatesList':
+        return renderUpdatesListControls();
+      case 'appCards':
+        return renderAppCardsControls();
+      case 'featureHighlight':
+        return renderFeatureHighlightControls();
+      case 'heroBanner':
+        return renderHeroBannerControls();
+      case 'celebration':
+        return renderCelebrationControls();
+      case 'heroSplit':
+        return renderHeroSplitControls();
+      case 'alternating':
+        return renderAlternatingControls();
       default:
         return renderDefaultControls();
     }
@@ -593,33 +789,123 @@ function SectionActionBar({
         <div className="space-y-3">
           {/* Preview */}
           {section.logo && (
-            <div className="relative w-full h-16 bg-zinc-100 rounded-lg overflow-hidden">
-              <img 
-                src={section.logo} 
-                alt="Logo preview" 
-                className="w-full h-full object-contain"
-              />
-              <div className="absolute top-1 right-1 flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveBackground('logo')}
-                  disabled={isProcessing}
-                  className="h-6 w-6 p-0 bg-white/80 hover:bg-white"
-                  title="Remove background"
-                >
-                  {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onUpdate({ logo: null })}
-                  className="h-6 w-6 p-0 bg-white/80 hover:bg-red-50 text-red-500"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+            <>
+              <div className="relative w-full h-16 bg-zinc-100 rounded-lg overflow-hidden">
+                <img 
+                  src={section.logo} 
+                  alt="Logo preview" 
+                  className="w-full h-full object-contain"
+                />
+                <div className="absolute top-1 right-1 flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveBackground('logo')}
+                    disabled={isProcessing}
+                    className="h-6 w-6 p-0 bg-white/80 hover:bg-white"
+                    title="Remove background"
+                  >
+                    {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onUpdate({ logo: null })}
+                    className="h-6 w-6 p-0 bg-white/80 hover:bg-red-50 text-red-500"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-            </div>
+              
+              {/* Logo Size Controls */}
+              <div className="space-y-2 pt-2 border-t border-zinc-100">
+                <p className="text-[9px] text-zinc-400 font-medium">Size</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-10">Width</span>
+                  <NumberStepper
+                    value={section.logoWidth || 120}
+                    onChange={(v) => onUpdate({ logoWidth: v })}
+                    min={30}
+                    max={400}
+                    step={10}
+                    suffix="px"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-10">Height</span>
+                  <div className="flex items-center gap-1 flex-1">
+                    <button
+                      onClick={() => onUpdate({ logoHeight: 'auto' })}
+                      className={cn(
+                        "px-2 py-1 rounded text-[9px] font-medium transition-colors",
+                        section.logoHeight === 'auto' || !section.logoHeight
+                          ? "bg-zinc-900 text-white"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      )}
+                    >
+                      Auto
+                    </button>
+                    {section.logoHeight !== 'auto' && section.logoHeight && (
+                      <NumberStepper
+                        value={section.logoHeight}
+                        onChange={(v) => onUpdate({ logoHeight: v })}
+                        min={20}
+                        max={200}
+                        step={5}
+                        suffix="px"
+                      />
+                    )}
+                    {(section.logoHeight === 'auto' || !section.logoHeight) && (
+                      <button
+                        onClick={() => onUpdate({ logoHeight: 60 })}
+                        className="px-2 py-1 rounded text-[9px] font-medium bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      >
+                        Set Height
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Logo Alignment */}
+                <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
+                  <span className="text-[10px] text-zinc-400 w-14">Align</span>
+                  <div className="flex gap-1 flex-1">
+                    {[
+                      { value: 'left', icon: AlignLeft },
+                      { value: 'center', icon: AlignCenter },
+                      { value: 'right', icon: AlignRight }
+                    ].map(({ value, icon: Icon }) => (
+                      <button
+                        key={value}
+                        onClick={() => onUpdate({ logoAlignment: value })}
+                        className={cn(
+                          "flex-1 h-7 flex items-center justify-center rounded transition-colors",
+                          (section.logoAlignment || 'center') === value
+                            ? "bg-zinc-900 text-white"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                        )}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Logo Vertical Offset */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-14">Offset Y</span>
+                  <NumberStepper
+                    value={section.logoOffsetY || 0}
+                    onChange={(v) => onUpdate({ logoOffsetY: v })}
+                    min={-100}
+                    max={100}
+                    step={5}
+                    suffix="px"
+                  />
+                </div>
+              </div>
+            </>
           )}
           
           {/* Media Kit Library */}
@@ -730,29 +1016,123 @@ function SectionActionBar({
         </div>
       </ActionGroup>
 
-      {/* Colors */}
+      {/* Colors - merged with Background */}
       <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
-        <div className="flex gap-1 flex-wrap">
-          {QUICK_COLORS.map(color => (
-            <button
-              key={color}
-              onClick={() => handleColorChange('backgroundColor', color)}
-              className={cn(
-                "w-6 h-6 rounded border-2 transition-transform hover:scale-110",
-                section.backgroundColor === color ? "border-zinc-900" : "border-zinc-200"
-              )}
-              style={{ backgroundColor: color }}
+        <div className="space-y-3">
+          {/* Theme Colors - Quick Selection */}
+          <div>
+            <p className="text-[9px] text-zinc-400 font-medium mb-1.5">Theme Colors</p>
+            <div className="flex gap-1 flex-wrap">
+              {DIVIDER_THEME_COLORS.map(color => (
+                <button
+                  key={color.value}
+                  onClick={() => onUpdate({ backgroundColor: color.value, backgroundType: 'solid', gradientEnd: null })}
+                  className={cn(
+                    "w-6 h-6 rounded border-2 transition-transform hover:scale-110",
+                    section.backgroundColor === color.value && (!section.backgroundType || section.backgroundType === 'solid')
+                      ? "border-zinc-900 ring-1 ring-zinc-900" 
+                      : "border-zinc-200"
+                  )}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="h-px bg-zinc-100" />
+
+          {/* Custom Background */}
+          <div>
+            <p className="text-[9px] text-zinc-400 font-medium mb-1.5">Custom Background</p>
+            <div className="flex gap-1 mb-2">
+              {['solid', 'gradient', 'image'].map(type => (
+                <button
+                  key={type}
+                  onClick={() => onUpdate({ backgroundType: type })}
+                  className={cn(
+                    "flex-1 px-2 py-1 rounded text-[9px] font-medium transition-colors capitalize",
+                    (section.backgroundType || 'solid') === type 
+                      ? "bg-zinc-900 text-white" 
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  )}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+            
+            {/* Solid Custom Color */}
+            {(!section.backgroundType || section.backgroundType === 'solid') && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400">Color</span>
+                <input
+                  type="color"
+                  value={section.backgroundColor || '#04D1FC'}
+                  onChange={(e) => onUpdate({ backgroundColor: e.target.value, backgroundType: 'solid', gradientEnd: null })}
+                  className="w-6 h-6 rounded cursor-pointer border border-zinc-200"
+                />
+              </div>
+            )}
+            
+            {/* Gradient */}
+            {section.backgroundType === 'gradient' && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-1">
+                  {THEME_GRADIENTS.slice(0, 6).map((gradient) => (
+                    <button
+                      key={gradient.name}
+                      onClick={() => onUpdate({ 
+                        backgroundColor: gradient.start, 
+                        gradientEnd: gradient.end,
+                        backgroundType: 'gradient'
+                      })}
+                      className={cn(
+                        "h-6 rounded border-2 transition-all",
+                        section.backgroundColor === gradient.start && section.gradientEnd === gradient.end 
+                          ? "border-zinc-900" : "border-zinc-200"
+                      )}
+                      style={{ background: `linear-gradient(135deg, ${gradient.start} 0%, ${gradient.end} 100%)` }}
+                      title={gradient.name}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] text-zinc-400">Start</span>
+                    <input
+                      type="color"
+                      value={section.backgroundColor || '#04D1FC'}
+                      onChange={(e) => onUpdate({ backgroundColor: e.target.value })}
+                      className="w-5 h-5 rounded cursor-pointer border border-zinc-200"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] text-zinc-400">End</span>
+                    <input
+                      type="color"
+                      value={section.gradientEnd || '#17A298'}
+                      onChange={(e) => onUpdate({ gradientEnd: e.target.value })}
+                      className="w-5 h-5 rounded cursor-pointer border border-zinc-200"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="h-px bg-zinc-100" />
+          
+          {/* Text Color */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400">Text Color</span>
+            <input
+              type="color"
+              value={section.textColor || '#FFFFFF'}
+              onChange={(e) => onUpdate({ textColor: e.target.value })}
+              className="w-6 h-6 rounded cursor-pointer border border-zinc-200"
             />
-          ))}
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-[10px] text-zinc-400">Text</span>
-          <input
-            type="color"
-            value={section.textColor || '#FFFFFF'}
-            onChange={(e) => handleColorChange('textColor', e.target.value)}
-            className="w-6 h-6 rounded cursor-pointer"
-          />
+          </div>
         </div>
       </ActionGroup>
 
@@ -835,8 +1215,67 @@ function SectionActionBar({
         />
       </ActionGroup>
 
-      {/* Background */}
-      {renderBackgroundControls()}
+      {/* Date Badge */}
+      <ActionGroup label="Date Badge" icon={Clock} expanded={expanded.dateBadge} onToggle={() => toggleExpand('dateBadge')}>
+        <div className="space-y-3">
+          {/* Enable/Disable */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">Show Badge</span>
+            <button
+              onClick={() => onUpdate({ showDateBadge: !section.showDateBadge })}
+              className={cn(
+                "w-9 h-5 rounded-full transition-colors relative",
+                section.showDateBadge ? "bg-[#04D1FC]" : "bg-zinc-200"
+              )}
+            >
+              <div
+                className={cn(
+                  "w-4 h-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform",
+                  section.showDateBadge ? "translate-x-4" : "translate-x-0.5"
+                )}
+              />
+            </button>
+          </div>
+          
+          {section.showDateBadge && (
+            <>
+              {/* Badge Text */}
+              <div className="space-y-1">
+                <span className="text-[10px] text-zinc-400">Text</span>
+                <input
+                  type="text"
+                  value={section.dateBadgeText || 'JULY 2025'}
+                  onChange={(e) => onUpdate({ dateBadgeText: e.target.value })}
+                  placeholder="JULY 2025"
+                  className="w-full h-7 px-2 text-xs rounded border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#04D1FC]"
+                />
+              </div>
+              
+              {/* Badge Colors */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-zinc-400">BG</span>
+                  <input
+                    type="color"
+                    value={section.dateBadgeBg || '#04D1FC'}
+                    onChange={(e) => onUpdate({ dateBadgeBg: e.target.value })}
+                    className="w-5 h-5 rounded cursor-pointer border border-zinc-200"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-zinc-400">Text</span>
+                  <input
+                    type="color"
+                    value={section.dateBadgeColor || '#FFFFFF'}
+                    onChange={(e) => onUpdate({ dateBadgeColor: e.target.value })}
+                    className="w-5 h-5 rounded cursor-pointer border border-zinc-200"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </ActionGroup>
 
       {/* Divider */}
       {renderDividerControls()}
@@ -850,44 +1289,22 @@ function SectionActionBar({
         <textarea
           value={section.content || ''}
           onChange={(e) => onUpdate({ content: e.target.value })}
-          placeholder="Enter your text here..."
+          placeholder="הכנס את הטקסט שלך כאן..."
           className="w-full h-24 p-2 text-sm rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#04D1FC] focus:border-transparent resize-none"
+          dir={section.textDirection || 'rtl'}
+          style={{ textAlign: section.textAlign || 'right' }}
         />
       </ActionGroup>
 
-      {/* Alignment */}
-      <ActionGroup label="Align" icon={AlignCenter} expanded={expanded.align} onToggle={() => toggleExpand('align')}>
-        <div className="space-y-2">
-          {/* Horizontal */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-400 w-10">H</span>
-            <div className="flex gap-0.5">
-              {[
-                { align: 'left', Icon: AlignLeft },
-                { align: 'center', Icon: AlignCenter },
-                { align: 'right', Icon: AlignRight },
-              ].map(({ align, Icon }) => (
-                <Button
-                  key={align}
-                  variant={section.textAlign === align ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => onUpdate({ textAlign: align })}
-                  className="h-7 w-7 p-0"
-                >
-                  <Icon className="w-3 h-3" />
-                </Button>
-              ))}
-            </div>
-          </div>
-          {/* Vertical */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-400 w-10">V</span>
-            <VerticalAlignControl 
-              value={section.verticalAlign || 'center'} 
-              onChange={(v) => onUpdate({ verticalAlign: v })} 
-            />
-          </div>
-        </div>
+      {/* Text Direction & Alignment */}
+      {renderTextDirectionControls()}
+      
+      {/* Vertical Alignment */}
+      <ActionGroup label="Vertical Align" icon={AlignCenterVertical} expanded={expanded.verticalAlign} onToggle={() => toggleExpand('verticalAlign')}>
+        <VerticalAlignControl 
+          value={section.verticalAlign || 'center'} 
+          onChange={(v) => onUpdate({ verticalAlign: v })} 
+        />
       </ActionGroup>
 
       {/* Font Size */}
@@ -1061,9 +1478,20 @@ function SectionActionBar({
             <NumberStepper
               value={section.imageHeight || 200}
               onChange={(v) => onUpdate({ imageHeight: v })}
-              min={100}
+              min={20}
               max={600}
-              step={25}
+              step={10}
+              suffix="px"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-10">Padding</span>
+            <NumberStepper
+              value={section.padding ?? 20}
+              onChange={(v) => onUpdate({ padding: v })}
+              min={0}
+              max={60}
+              step={5}
               suffix="px"
             />
           </div>
@@ -1072,43 +1500,510 @@ function SectionActionBar({
     </>
   );
 
-  const renderMarqueeControls = () => (
+  const renderImageSequenceControls = () => {
+    const sequenceImages = section.images || [];
+
+    const handleSequenceImageUpload = async (files) => {
+      const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+      if (imageFiles.length === 0) return;
+
+      const newImages = await Promise.all(
+        imageFiles.map(file => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      onUpdate({ images: [...sequenceImages, ...newImages] });
+    };
+
+    const removeSequenceImage = (index) => {
+      const newImages = sequenceImages.filter((_, i) => i !== index);
+      onUpdate({ images: newImages });
+    };
+
+    const clearAllImages = () => {
+      onUpdate({ images: [] });
+    };
+
+    const handleExportGif = async () => {
+      if (sequenceImages.length < 2) {
+        alert('Add at least 2 images to create a GIF');
+        return;
+      }
+      
+      setIsExportingGif(true);
+      setGifProgress(0);
+      
+      try {
+        const result = await exportSequenceAsGif(sequenceImages, {
+          width: 600,
+          height: section.previewHeight || 300,
+          delay: section.frameDuration || 500,
+          backgroundColor: section.backgroundColor || '#FFFFFF',
+          onProgress: setGifProgress
+        });
+        
+        // Convert blob to data URL and replace section with image collage
+        // Use exact dimensions from export
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result;
+          onReplace?.({
+            type: 'imageCollage',
+            layout: 'single',
+            images: [dataUrl],
+            imageHeight: result.height,
+            gap: 0,
+            padding: 0,
+            backgroundColor: section.backgroundColor || '#FFFFFF'
+          });
+        };
+        reader.readAsDataURL(result.blob);
+      } catch (error) {
+        console.error('GIF export failed:', error);
+        alert('GIF export failed: ' + error.message);
+      } finally {
+        setIsExportingGif(false);
+        setGifProgress(0);
+      }
+    };
+
+    return (
+      <>
+        {/* Upload Images */}
+        <ActionGroup label="Frames" icon={Film} expanded={expanded.frames} onToggle={() => toggleExpand('frames')}>
+          <div className="space-y-3">
+            {/* Upload Area */}
+            <div 
+              className="border-2 border-dashed border-zinc-200 rounded-lg p-3 text-center hover:border-[#04D1FC] transition-colors cursor-pointer"
+              onClick={() => sequenceInputRef.current?.click()}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleSequenceImageUpload(e.dataTransfer.files);
+              }}
+              onDragOver={(e) => e.preventDefault()}
+            >
+              <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
+              <p className="text-[10px] text-zinc-500 mb-0.5">Drop images or click</p>
+              <p className="text-[9px] text-zinc-400">{sequenceImages.length} frames</p>
+              <input
+                ref={sequenceInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleSequenceImageUpload(e.target.files)}
+              />
+            </div>
+
+            {/* Frame Thumbnails */}
+            {sequenceImages.length > 0 && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-1.5 max-h-32 overflow-y-auto">
+                  {sequenceImages.map((img, index) => (
+                    <div key={index} className="relative group aspect-square rounded overflow-hidden border border-zinc-200">
+                      <img src={img} alt={`Frame ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeSequenceImage(index)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 text-white rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                      <span className="absolute bottom-0.5 left-0.5 bg-black/60 text-white text-[8px] px-1 rounded">
+                        {index + 1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={clearAllImages}
+                  className="h-6 text-[10px] w-full"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Clear All
+                </Button>
+              </div>
+            )}
+          </div>
+        </ActionGroup>
+
+        {/* Timing */}
+        <ActionGroup label="Timing" icon={Clock} expanded={expanded.timing} onToggle={() => toggleExpand('timing')}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Duration</span>
+              <select
+                value={section.frameDuration || 500}
+                onChange={(e) => onUpdate({ frameDuration: parseInt(e.target.value) })}
+                className="flex-1 h-7 text-xs rounded border border-zinc-200 px-2"
+              >
+                <option value={200}>200ms (Fast)</option>
+                <option value={300}>300ms</option>
+                <option value={500}>500ms</option>
+                <option value={750}>750ms</option>
+                <option value={1000}>1s</option>
+                <option value={1500}>1.5s</option>
+                <option value={2000}>2s (Slow)</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Height</span>
+              <NumberStepper
+                value={section.previewHeight || 300}
+                onChange={(v) => onUpdate({ previewHeight: v })}
+                min={150}
+                max={600}
+                step={25}
+                suffix="px"
+              />
+            </div>
+          </div>
+        </ActionGroup>
+
+        {/* Display Options */}
+        <ActionGroup label="Options" icon={Settings} expanded={expanded.options} onToggle={() => toggleExpand('options')}>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-[10px] text-zinc-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={section.autoPlay !== false}
+                onChange={(e) => onUpdate({ autoPlay: e.target.checked })}
+                className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC] w-3.5 h-3.5"
+              />
+              Auto-play animation
+            </label>
+            <label className="flex items-center gap-2 text-[10px] text-zinc-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={section.showControls || false}
+                onChange={(e) => onUpdate({ showControls: e.target.checked })}
+                className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC] w-3.5 h-3.5"
+              />
+              Show play/pause
+            </label>
+            <label className="flex items-center gap-2 text-[10px] text-zinc-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={section.showThumbnails || false}
+                onChange={(e) => onUpdate({ showThumbnails: e.target.checked })}
+                className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC] w-3.5 h-3.5"
+              />
+              Show thumbnails
+            </label>
+            <label className="flex items-center gap-2 text-[10px] text-zinc-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={section.showFrameCounter || false}
+                onChange={(e) => onUpdate({ showFrameCounter: e.target.checked })}
+                className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC] w-3.5 h-3.5"
+              />
+              Show frame counter
+            </label>
+          </div>
+        </ActionGroup>
+
+        {/* Convert to GIF */}
+        {sequenceImages.length >= 2 && (
+          <ActionGroup label="Convert" icon={FileImage} expanded={expanded.export} onToggle={() => toggleExpand('export')}>
+            <div className="space-y-2">
+              <p className="text-[9px] text-zinc-400">Convert to animated GIF image section</p>
+              <Button
+                size="sm"
+                onClick={handleExportGif}
+                disabled={isExportingGif}
+                className="h-8 text-xs w-full"
+              >
+                {isExportingGif ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    {gifProgress}%
+                  </>
+                ) : (
+                  <>
+                    <FileImage className="w-3.5 h-3.5" />
+                    Convert to GIF Image
+                  </>
+                )}
+              </Button>
+            </div>
+          </ActionGroup>
+        )}
+
+        {/* Background */}
+        {renderBackgroundControls()}
+      </>
+    );
+  };
+
+  const renderMarqueeControls = () => {
+    // Handle icon selection
+    const handleIconSelect = (iconName, IconComponent) => {
+      onUpdate({ selectedIcon: iconName });
+      setShowIconPicker(false);
+    };
+
+    return (
     <>
+      {/* Icon Selection */}
+      <ActionGroup label="Icon" icon={Smile} expanded={expanded.icon} onToggle={() => toggleExpand('icon')}>
+        <div className="space-y-2">
+          {/* Selected Icon Preview */}
+          <div className="flex items-center gap-2 p-2 bg-zinc-50 rounded-lg">
+            <span className="text-[10px] text-zinc-400">Selected:</span>
+            {section.selectedIcon ? (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded border border-zinc-200">
+                <MarqueeIconPreview iconName={section.selectedIcon} />
+                <span className="text-xs text-zinc-600">{section.selectedIcon}</span>
+                <button 
+                  onClick={() => onUpdate({ selectedIcon: null })}
+                  className="ml-1 text-zinc-400 hover:text-red-500"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-zinc-400 italic">None</span>
+            )}
+          </div>
+          
+          {/* Icon Picker */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowIconPicker(!showIconPicker)}
+            className="h-8 text-xs w-full"
+          >
+            <Smile className="w-3.5 h-3.5 mr-1.5" />
+            {section.selectedIcon ? 'Change Icon' : 'Select Icon'}
+          </Button>
+        </div>
+      </ActionGroup>
+      
+      {/* Icon Picker Modal - rendered outside ActionGroup to avoid clipping */}
+      {showIconPicker && (
+        <div className="fixed inset-0 z-[200]" onClick={() => setShowIconPicker(false)}>
+          <div 
+            className="absolute bg-white rounded-xl shadow-2xl border border-zinc-200 p-3 w-[320px] max-h-[400px] overflow-hidden"
+            style={{ top: '120px', left: '50%', transform: 'translateX(-50%)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-zinc-100">
+              <h3 className="text-sm font-semibold text-zinc-800">Select Icon</h3>
+              <button 
+                onClick={() => setShowIconPicker(false)}
+                className="p-1 hover:bg-zinc-100 rounded"
+              >
+                <X className="w-4 h-4 text-zinc-400" />
+              </button>
+            </div>
+            <IconPicker
+              value={section.selectedIcon}
+              onChange={handleIconSelect}
+              onClose={() => setShowIconPicker(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Text Content */}
+      <ActionGroup label="Text" icon={Type} expanded={expanded.content} onToggle={() => toggleExpand('content')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.text || 'Special Announcement'}
+            onChange={(e) => onUpdate({ text: e.target.value })}
+            placeholder="Enter your marquee text..."
+            className="w-full h-9 px-3 text-sm rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#04D1FC] focus:border-transparent"
+          />
+          <p className="text-[9px] text-zinc-400">This text will repeat with the icon across the marquee.</p>
+        </div>
+      </ActionGroup>
+
+      {/* Colors */}
       <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
-        <div className="flex gap-2">
-          <div className="flex items-center gap-1">
+        <div className="flex gap-3">
+          <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-zinc-400">Bg</span>
             <input
               type="color"
               value={section.backgroundColor || '#04D1FC'}
               onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
-              className="w-6 h-6 rounded cursor-pointer"
+              className="w-6 h-6 rounded cursor-pointer border border-zinc-200"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-zinc-400">Text</span>
             <input
               type="color"
               value={section.textColor || '#FFFFFF'}
               onChange={(e) => handleColorChange('textColor', e.target.value)}
-              className="w-6 h-6 rounded cursor-pointer"
+              className="w-6 h-6 rounded cursor-pointer border border-zinc-200"
             />
           </div>
         </div>
       </ActionGroup>
-      <ActionGroup label="Speed" icon={Type} expanded={expanded.speed} onToggle={() => toggleExpand('speed')}>
-        <select
-          value={section.speed || 30}
-          onChange={(e) => onUpdate({ speed: parseInt(e.target.value) })}
-          className="h-7 text-xs rounded border border-zinc-200 px-2 w-full"
-        >
-          <option value={15}>Fast</option>
-          <option value={30}>Medium</option>
-          <option value={60}>Slow</option>
-        </select>
+
+      {/* Animation */}
+      <ActionGroup label="Animation" icon={Move} expanded={expanded.animation} onToggle={() => toggleExpand('animation')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Speed</span>
+            <select
+              value={section.speed || 30}
+              onChange={(e) => onUpdate({ speed: parseInt(e.target.value) })}
+              className="h-7 text-xs rounded border border-zinc-200 px-2 flex-1"
+            >
+              <option value={10}>Very Fast</option>
+              <option value={15}>Fast</option>
+              <option value={30}>Medium</option>
+              <option value={60}>Slow</option>
+              <option value={90}>Very Slow</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Direction</span>
+            <div className="flex gap-1 flex-1">
+              <Button
+                variant={section.direction !== 'right' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onUpdate({ direction: 'left' })}
+                className="h-7 text-xs flex-1"
+              >
+                ← Left
+              </Button>
+              <Button
+                variant={section.direction === 'right' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onUpdate({ direction: 'right' })}
+                className="h-7 text-xs flex-1"
+              >
+                Right →
+              </Button>
+            </div>
+          </div>
+        </div>
+      </ActionGroup>
+
+      {/* Typography */}
+      <ActionGroup label="Typography" icon={Type} expanded={expanded.typography} onToggle={() => toggleExpand('typography')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-10">Size</span>
+            <NumberStepper
+              value={section.fontSize || 16}
+              onChange={(v) => onUpdate({ fontSize: v })}
+              min={10}
+              max={32}
+              suffix="px"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-10">Weight</span>
+            <select
+              value={section.fontWeight || '500'}
+              onChange={(e) => onUpdate({ fontWeight: e.target.value })}
+              className="h-7 text-xs rounded border border-zinc-200 px-2 flex-1"
+            >
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semi Bold</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-10">Separator</span>
+            <input
+              type="text"
+              value={section.separator || '•'}
+              onChange={(e) => onUpdate({ separator: e.target.value })}
+              className="h-7 px-2 text-xs rounded border border-zinc-200 flex-1 w-full"
+              maxLength={3}
+            />
+          </div>
+        </div>
+      </ActionGroup>
+
+      {/* Spacing */}
+      <ActionGroup label="Spacing" icon={Layers} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-400 w-14">Padding</span>
+          <NumberStepper
+            value={section.paddingVertical || 12}
+            onChange={(v) => onUpdate({ paddingVertical: v })}
+            min={4}
+            max={40}
+            suffix="px"
+          />
+        </div>
+      </ActionGroup>
+
+      {/* Convert to GIF */}
+      <ActionGroup label="Convert" icon={Film} expanded={expanded.export} onToggle={() => toggleExpand('export')}>
+        <div className="space-y-2">
+          <p className="text-[9px] text-zinc-400">Convert to animated GIF image section</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setIsExportingGif(true);
+              setGifProgress(0);
+              try {
+                const result = await exportMarqueeAsGif(section, {
+                  width: 600,
+                  onProgress: setGifProgress
+                });
+                
+                // Convert blob to data URL and replace section
+                // Use exact dimensions from export to prevent size changes
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const dataUrl = reader.result;
+                  
+                  onReplace?.({
+                    type: 'imageCollage',
+                    layout: 'single',
+                    images: [dataUrl],
+                    imageHeight: result.height,
+                    gap: 0,
+                    padding: 0,
+                    backgroundColor: section.backgroundColor || '#04D1FC'
+                  });
+                };
+                reader.readAsDataURL(result.blob);
+              } catch (error) {
+                console.error('GIF export failed:', error);
+                alert('GIF export failed: ' + error.message);
+              } finally {
+                setIsExportingGif(false);
+                setGifProgress(0);
+              }
+            }}
+            disabled={isExportingGif}
+            className="h-8 text-xs w-full"
+          >
+            {isExportingGif ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                {gifProgress > 0 ? `${gifProgress}%` : 'Converting...'}
+              </>
+            ) : (
+              <>
+                <Film className="w-3.5 h-3.5 mr-1.5" />
+                Convert to GIF Image
+              </>
+            )}
+          </Button>
+        </div>
       </ActionGroup>
     </>
   );
+  };
 
   const renderFooterControls = () => (
     <>
@@ -1553,6 +2448,1745 @@ function SectionActionBar({
     </>
   );
 
+  // Stats Section Controls
+  const renderStatsControls = () => (
+    <>
+      <ActionGroup label="Content" icon={Type} expanded={expanded.content} onToggle={() => toggleExpand('content')}>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Title</label>
+            <input
+              type="text"
+              value={section.title || ''}
+              onChange={(e) => onUpdate({ title: e.target.value })}
+              className="w-full h-8 px-2 text-xs rounded border border-zinc-200"
+              placeholder="Section title..."
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Subtitle</label>
+            <input
+              type="text"
+              value={section.subtitle || ''}
+              onChange={(e) => onUpdate({ subtitle: e.target.value })}
+              className="w-full h-8 px-2 text-xs rounded border border-zinc-200"
+              placeholder="Section subtitle..."
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Columns</label>
+            <div className="flex gap-1">
+              {[2, 3, 4].map(cols => (
+                <Button
+                  key={cols}
+                  variant={section.columns === cols ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate({ columns: cols })}
+                  className="flex-1 h-7 text-xs"
+                >
+                  {cols}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-zinc-400 w-16">Dividers</label>
+            <input type="checkbox" checked={section.showDividers !== false} onChange={(e) => onUpdate({ showDividers: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Title Typography */}
+      <ActionGroup label="Title Style" icon={LetterText} expanded={expanded.titleStyle} onToggle={() => toggleExpand('titleStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.titleFontSize || 32} onChange={(v) => onUpdate({ titleFontSize: v })} min={12} max={72} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.titleFontWeight || '700'} onChange={(e) => onUpdate({ titleFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="300">Light</option>
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+              <option value="800">Extra Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.textColor || '#000000'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Value Typography */}
+      <ActionGroup label="Value Style" icon={LetterText} expanded={expanded.valueStyle} onToggle={() => toggleExpand('valueStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.valueFontSize || 48} onChange={(v) => onUpdate({ valueFontSize: v })} min={16} max={96} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.valueFontWeight || '400'} onChange={(e) => onUpdate({ valueFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="300">Light</option>
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+              <option value="800">Extra Bold</option>
+            </select>
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Label Typography */}
+      <ActionGroup label="Label Style" icon={LetterText} expanded={expanded.labelStyle} onToggle={() => toggleExpand('labelStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.labelFontSize || 14} onChange={(v) => onUpdate({ labelFontSize: v })} min={10} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.labelFontWeight || '400'} onChange={(e) => onUpdate({ labelFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="300">Light</option>
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.labelColor || '#666666'} onChange={(e) => onUpdate({ labelColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Spacing */}
+      <ActionGroup label="Spacing" icon={AlignVerticalSpaceAround} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">V Pad</span>
+            <NumberStepper value={section.paddingVertical || 40} onChange={(v) => onUpdate({ paddingVertical: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">H Pad</span>
+            <NumberStepper value={section.paddingHorizontal || 24} onChange={(v) => onUpdate({ paddingHorizontal: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Gap</span>
+            <NumberStepper value={section.gap || 24} onChange={(v) => onUpdate({ gap: v })} min={0} max={60} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  // Feature Grid Section Controls
+  const renderFeatureGridControls = () => (
+    <>
+      <ActionGroup label="Image" icon={Image} expanded={expanded.image} onToggle={() => toggleExpand('image')}>
+        <div className="space-y-3">
+          {section.image ? (
+            <div className="relative rounded-lg overflow-hidden">
+              <img src={section.image} alt="Feature" className="w-full h-24 object-contain bg-zinc-100" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onUpdate({ image: '' })}
+                className="absolute top-1 right-1 h-6 w-6 p-0 bg-white/80 hover:bg-red-50 text-red-500"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'image')} />
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="h-8 text-xs w-full">
+                <Upload className="w-3 h-3 mr-1.5" />
+                Upload Image
+              </Button>
+            </>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Height</span>
+            <NumberStepper value={section.imageHeight || 300} onChange={(v) => onUpdate({ imageHeight: v })} min={100} max={600} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Position</span>
+            <select value={section.imagePosition || 'top'} onChange={(e) => onUpdate({ imagePosition: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Content" icon={Type} expanded={expanded.content} onToggle={() => toggleExpand('content')}>
+        <div className="space-y-2">
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Title</label>
+            <input
+              type="text"
+              value={section.title || ''}
+              onChange={(e) => onUpdate({ title: e.target.value })}
+              className="w-full h-8 px-2 text-xs rounded border border-zinc-200"
+              placeholder="Title..."
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Subtitle</label>
+            <input
+              type="text"
+              value={section.subtitle || ''}
+              onChange={(e) => onUpdate({ subtitle: e.target.value })}
+              className="w-full h-8 px-2 text-xs rounded border border-zinc-200"
+              placeholder="Subtitle..."
+            />
+          </div>
+          <div className="flex gap-1">
+            <span className="text-[10px] text-zinc-400 w-14">Columns</span>
+            {[2, 3, 4].map(cols => (
+              <Button
+                key={cols}
+                variant={section.featureColumns === cols ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ featureColumns: cols })}
+                className="flex-1 h-7 text-xs"
+              >
+                {cols}
+              </Button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-zinc-400 w-14">Numbers</label>
+            <input type="checkbox" checked={section.showNumbers !== false} onChange={(e) => onUpdate({ showNumbers: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Title Typography */}
+      <ActionGroup label="Title Style" icon={LetterText} expanded={expanded.titleStyle} onToggle={() => toggleExpand('titleStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.titleFontSize || 56} onChange={(v) => onUpdate({ titleFontSize: v })} min={16} max={96} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.titleFontWeight || '700'} onChange={(e) => onUpdate({ titleFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="300">Light</option>
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+              <option value="800">Extra Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Feature Typography */}
+      <ActionGroup label="Feature Style" icon={LetterText} expanded={expanded.featureStyle} onToggle={() => toggleExpand('featureStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Title</span>
+            <NumberStepper value={section.featureTitleFontSize || 14} onChange={(v) => onUpdate({ featureTitleFontSize: v })} min={10} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Desc</span>
+            <NumberStepper value={section.featureDescFontSize || 14} onChange={(v) => onUpdate({ featureDescFontSize: v })} min={10} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.accentColor || '#86868B'} onChange={(e) => onUpdate({ accentColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Spacing */}
+      <ActionGroup label="Spacing" icon={AlignVerticalSpaceAround} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">V Pad</span>
+            <NumberStepper value={section.paddingVertical || 48} onChange={(v) => onUpdate({ paddingVertical: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">H Pad</span>
+            <NumberStepper value={section.paddingHorizontal || 24} onChange={(v) => onUpdate({ paddingHorizontal: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Gap</span>
+            <NumberStepper value={section.gap || 24} onChange={(v) => onUpdate({ gap: v })} min={0} max={60} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  // Specs Table Section Controls
+  const renderSpecsTableControls = () => (
+    <>
+      <ActionGroup label="Content" icon={Type} expanded={expanded.content} onToggle={() => toggleExpand('content')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.title || ''}
+            onChange={(e) => onUpdate({ title: e.target.value })}
+            className="w-full h-8 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Section title..."
+          />
+        </div>
+      </ActionGroup>
+      
+      {/* Title Typography */}
+      <ActionGroup label="Title Style" icon={LetterText} expanded={expanded.titleStyle} onToggle={() => toggleExpand('titleStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.titleFontSize || 40} onChange={(v) => onUpdate({ titleFontSize: v })} min={16} max={72} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.titleFontWeight || '700'} onChange={(e) => onUpdate({ titleFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="300">Light</option>
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+              <option value="800">Extra Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Label Typography */}
+      <ActionGroup label="Label Style" icon={LetterText} expanded={expanded.labelStyle} onToggle={() => toggleExpand('labelStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.labelFontSize || 14} onChange={(v) => onUpdate({ labelFontSize: v })} min={10} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.labelFontWeight || '600'} onChange={(e) => onUpdate({ labelFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.labelColor || '#1D1D1F'} onChange={(e) => onUpdate({ labelColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Value Typography */}
+      <ActionGroup label="Value Style" icon={LetterText} expanded={expanded.valueStyle} onToggle={() => toggleExpand('valueStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.valueFontSize || 14} onChange={(v) => onUpdate({ valueFontSize: v })} min={10} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.valueFontWeight || '400'} onChange={(e) => onUpdate({ valueFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.valueColor || '#86868B'} onChange={(e) => onUpdate({ valueColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Spacing */}
+      <ActionGroup label="Spacing" icon={AlignVerticalSpaceAround} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">V Pad</span>
+            <NumberStepper value={section.paddingVertical || 48} onChange={(v) => onUpdate({ paddingVertical: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">H Pad</span>
+            <NumberStepper value={section.paddingHorizontal || 24} onChange={(v) => onUpdate({ paddingHorizontal: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Row Pad</span>
+            <NumberStepper value={section.rowPadding || 16} onChange={(v) => onUpdate({ rowPadding: v })} min={8} max={40} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Divider</span>
+            <input type="color" value={section.dividerColor || '#D2D2D7'} onChange={(e) => onUpdate({ dividerColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  // Contact Cards Section Controls
+  const renderContactCardsControls = () => (
+    <>
+      <ActionGroup label="Layout" icon={Layers} expanded={expanded.layout} onToggle={() => toggleExpand('layout')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-zinc-400 w-12">Dividers</label>
+            <input type="checkbox" checked={section.showDividers !== false} onChange={(e) => onUpdate({ showDividers: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* City Typography */}
+      <ActionGroup label="City Style" icon={LetterText} expanded={expanded.cityStyle} onToggle={() => toggleExpand('cityStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.cityFontSize || 28} onChange={(v) => onUpdate({ cityFontSize: v })} min={14} max={48} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.cityFontWeight || '600'} onChange={(e) => onUpdate({ cityFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Info Typography */}
+      <ActionGroup label="Info Style" icon={LetterText} expanded={expanded.infoStyle} onToggle={() => toggleExpand('infoStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.infoFontSize || 13} onChange={(v) => onUpdate({ infoFontSize: v })} min={10} max={20} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.infoFontWeight || '400'} onChange={(e) => onUpdate({ infoFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.labelColor || '#86868B'} onChange={(e) => onUpdate({ labelColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Spacing */}
+      <ActionGroup label="Spacing" icon={AlignVerticalSpaceAround} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">V Pad</span>
+            <NumberStepper value={section.paddingVertical || 32} onChange={(v) => onUpdate({ paddingVertical: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">H Pad</span>
+            <NumberStepper value={section.paddingHorizontal || 24} onChange={(v) => onUpdate({ paddingHorizontal: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Card Pad</span>
+            <NumberStepper value={section.cardPadding || 24} onChange={(v) => onUpdate({ cardPadding: v })} min={8} max={48} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Divider</span>
+            <input type="color" value={section.dividerColor || '#D2D2D7'} onChange={(e) => onUpdate({ dividerColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  // Steps Section Controls
+  const renderStepsControls = () => (
+    <>
+      <ActionGroup label="Content" icon={Type} expanded={expanded.content} onToggle={() => toggleExpand('content')}>
+        <div className="space-y-2">
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Section Label</label>
+            <input
+              type="text"
+              value={section.sectionLabel || ''}
+              onChange={(e) => onUpdate({ sectionLabel: e.target.value })}
+              className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+              placeholder="SECTION LABEL"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Title</label>
+            <input
+              type="text"
+              value={section.title || ''}
+              onChange={(e) => onUpdate({ title: e.target.value })}
+              className="w-full h-8 px-2 text-xs rounded border border-zinc-200"
+              placeholder="Section title..."
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-zinc-400 w-12">Dividers</label>
+            <input type="checkbox" checked={section.showDividers !== false} onChange={(e) => onUpdate({ showDividers: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Section Label Typography */}
+      <ActionGroup label="Label Style" icon={LetterText} expanded={expanded.sectionLabelStyle} onToggle={() => toggleExpand('sectionLabelStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.sectionLabelFontSize || 11} onChange={(v) => onUpdate({ sectionLabelFontSize: v })} min={8} max={16} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.sectionLabelFontWeight || '500'} onChange={(e) => onUpdate({ sectionLabelFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.labelColor || '#86868B'} onChange={(e) => onUpdate({ labelColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Title Typography */}
+      <ActionGroup label="Title Style" icon={LetterText} expanded={expanded.titleStyle} onToggle={() => toggleExpand('titleStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.titleFontSize || 32} onChange={(v) => onUpdate({ titleFontSize: v })} min={16} max={56} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.titleFontWeight || '700'} onChange={(e) => onUpdate({ titleFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+              <option value="700">Bold</option>
+              <option value="800">Extra Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Step Typography */}
+      <ActionGroup label="Step Style" icon={LetterText} expanded={expanded.stepStyle} onToggle={() => toggleExpand('stepStyle')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Num Size</span>
+            <NumberStepper value={section.numberFontSize || 12} onChange={(v) => onUpdate({ numberFontSize: v })} min={10} max={20} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Title Size</span>
+            <NumberStepper value={section.stepTitleFontSize || 16} onChange={(v) => onUpdate({ stepTitleFontSize: v })} min={12} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.stepTitleFontWeight || '400'} onChange={(e) => onUpdate({ stepTitleFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semibold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Note Size</span>
+            <NumberStepper value={section.noteFontSize || 14} onChange={(v) => onUpdate({ noteFontSize: v })} min={10} max={20} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Note Color</span>
+            <input type="color" value={section.noteColor || '#86868B'} onChange={(e) => onUpdate({ noteColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {/* Spacing */}
+      <ActionGroup label="Spacing" icon={AlignVerticalSpaceAround} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">V Pad</span>
+            <NumberStepper value={section.paddingVertical || 48} onChange={(v) => onUpdate({ paddingVertical: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">H Pad</span>
+            <NumberStepper value={section.paddingHorizontal || 24} onChange={(v) => onUpdate({ paddingHorizontal: v })} min={0} max={100} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Step Pad</span>
+            <NumberStepper value={section.stepPadding || 20} onChange={(v) => onUpdate({ stepPadding: v })} min={8} max={40} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Divider</span>
+            <input type="color" value={section.dividerColor || '#D2D2D7'} onChange={(e) => onUpdate({ dividerColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  // NEW SECTION CONTROLS
+
+  const renderAccentTextControls = () => (
+    <>
+      <ActionGroup label="Tag" icon={Type} expanded={expanded.tag} onToggle={() => toggleExpand('tag')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.tag || ''}
+            onChange={(e) => onUpdate({ tag: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Tag text..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-10">BG</span>
+            <input type="color" value={section.tagBg || '#04D1FC'} onChange={(e) => onUpdate({ tagBg: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+            <span className="text-[10px] text-zinc-400 w-10">Text</span>
+            <input type="color" value={section.tagColor || '#FFFFFF'} onChange={(e) => onUpdate({ tagColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Content" icon={Type} expanded={expanded.content} onToggle={() => toggleExpand('content')}>
+        <textarea
+          value={section.content || ''}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          className="w-full h-24 p-2 text-sm rounded-lg border border-zinc-200 resize-none"
+          placeholder="Content..."
+          dir={section.textDirection || 'rtl'}
+        />
+      </ActionGroup>
+      
+      <ActionGroup label="Accent Line" icon={Palette} expanded={expanded.accent} onToggle={() => toggleExpand('accent')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Position</span>
+            <div className="flex gap-1 flex-1">
+              <Button
+                variant={(section.accentPosition || 'right') === 'left' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onUpdate({ accentPosition: 'left' })}
+                className="flex-1 h-6 text-xs"
+              >
+                שמאל
+              </Button>
+              <Button
+                variant={(section.accentPosition || 'right') === 'right' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onUpdate({ accentPosition: 'right' })}
+                className="flex-1 h-6 text-xs"
+              >
+                ימין
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.accentColor || '#FF6B6B'} onChange={(e) => onUpdate({ accentColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Width</span>
+            <NumberStepper value={section.accentWidth || 4} onChange={(v) => onUpdate({ accentWidth: v })} min={2} max={12} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Typography" icon={LetterText} expanded={expanded.typography} onToggle={() => toggleExpand('typography')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.fontSize || 16} onChange={(v) => onUpdate({ fontSize: v })} min={12} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  const renderFeatureCardsControls = () => (
+    <>
+      <ActionGroup label="Layout" icon={Grid3X3} expanded={expanded.layout} onToggle={() => toggleExpand('layout')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Columns</span>
+            <NumberStepper value={section.columns || 2} onChange={(v) => onUpdate({ columns: v })} min={1} max={3} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Gap</span>
+            <NumberStepper value={section.gap || 24} onChange={(v) => onUpdate({ gap: v })} min={8} max={48} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Img H</span>
+            <NumberStepper value={section.imageHeight || 180} onChange={(v) => onUpdate({ imageHeight: v })} min={100} max={400} suffix="px" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">Labels</span>
+            <input type="checkbox" checked={section.showLabels !== false} onChange={(e) => onUpdate({ showLabels: e.target.checked })} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">CTA Links</span>
+            <input type="checkbox" checked={section.showCta !== false} onChange={(e) => onUpdate({ showCta: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Cards" icon={Layers} expanded={expanded.cards} onToggle={() => toggleExpand('cards')}>
+        <div className="space-y-3">
+          {(section.cards || []).map((card, index) => (
+            <div key={index} className="p-2 border border-zinc-200 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">Card {index + 1}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newCards = [...(section.cards || [])];
+                    newCards.splice(index, 1);
+                    onUpdate({ cards: newCards });
+                  }}
+                  className="h-5 w-5 p-0 text-red-500 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+              <input
+                type="text"
+                value={card.title || ''}
+                onChange={(e) => {
+                  const newCards = [...(section.cards || [])];
+                  newCards[index] = { ...newCards[index], title: e.target.value };
+                  onUpdate({ cards: newCards });
+                }}
+                className="w-full h-6 px-2 text-xs rounded border border-zinc-200"
+                placeholder="Title..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <textarea
+                value={card.description || ''}
+                onChange={(e) => {
+                  const newCards = [...(section.cards || [])];
+                  newCards[index] = { ...newCards[index], description: e.target.value };
+                  onUpdate({ cards: newCards });
+                }}
+                className="w-full h-12 p-1 text-xs rounded border border-zinc-200 resize-none"
+                placeholder="Description..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const newCards = [...(section.cards || [])];
+                        newCards[index] = { ...newCards[index], image: ev.target?.result };
+                        onUpdate({ cards: newCards });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                  id={`card-image-${index}`}
+                />
+                <label
+                  htmlFor={`card-image-${index}`}
+                  className="flex-1 flex items-center justify-center gap-1 h-6 rounded bg-zinc-100 hover:bg-zinc-200 text-xs cursor-pointer"
+                >
+                  <Upload className="w-3 h-3" /> Image
+                </label>
+              </div>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const newCards = [...(section.cards || [])];
+              newCards.push({ image: '', label: 'חדש', title: 'כותרת חדשה', description: 'תיאור...', cta: 'למידע נוסף', ctaUrl: '#' });
+              onUpdate({ cards: newCards });
+            }}
+            className="w-full h-7 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Add Card
+          </Button>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Card BG</span>
+            <input type="color" value={section.cardBg || '#FFFFFF'} onChange={(e) => onUpdate({ cardBg: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Text</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Label</span>
+            <input type="color" value={section.labelColor || '#86868B'} onChange={(e) => onUpdate({ labelColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">CTA</span>
+            <input type="color" value={section.ctaColor || '#5856D6'} onChange={(e) => onUpdate({ ctaColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  const renderUpdatesListControls = () => (
+    <>
+      <ActionGroup label="Header" icon={Type} expanded={expanded.header} onToggle={() => toggleExpand('header')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.title || ''}
+            onChange={(e) => onUpdate({ title: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Title..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <input
+            type="text"
+            value={section.headerCta || ''}
+            onChange={(e) => onUpdate({ headerCta: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Header CTA..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">Show Icons</span>
+            <input type="checkbox" checked={section.showIcons !== false} onChange={(e) => onUpdate({ showIcons: e.target.checked })} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">Dividers</span>
+            <input type="checkbox" checked={section.showDividers !== false} onChange={(e) => onUpdate({ showDividers: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Items" icon={Layers} expanded={expanded.items} onToggle={() => toggleExpand('items')}>
+        <div className="space-y-3">
+          {(section.items || []).map((item, index) => (
+            <div key={index} className="p-2 border border-zinc-200 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">Item {index + 1}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newItems = [...(section.items || [])];
+                    newItems.splice(index, 1);
+                    onUpdate({ items: newItems });
+                  }}
+                  className="h-5 w-5 p-0 text-red-500 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={item.icon || ''}
+                  onChange={(e) => {
+                    const newItems = [...(section.items || [])];
+                    newItems[index] = { ...newItems[index], icon: e.target.value };
+                    onUpdate({ items: newItems });
+                  }}
+                  className="w-12 h-6 px-1 text-center text-sm rounded border border-zinc-200"
+                  placeholder="🎯"
+                />
+                <input
+                  type="color"
+                  value={item.iconBg || '#F0F0F0'}
+                  onChange={(e) => {
+                    const newItems = [...(section.items || [])];
+                    newItems[index] = { ...newItems[index], iconBg: e.target.value };
+                    onUpdate({ items: newItems });
+                  }}
+                  className="w-6 h-6 rounded cursor-pointer"
+                />
+              </div>
+              <input
+                type="text"
+                value={item.title || ''}
+                onChange={(e) => {
+                  const newItems = [...(section.items || [])];
+                  newItems[index] = { ...newItems[index], title: e.target.value };
+                  onUpdate({ items: newItems });
+                }}
+                className="w-full h-6 px-2 text-xs rounded border border-zinc-200"
+                placeholder="Title..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <textarea
+                value={item.description || ''}
+                onChange={(e) => {
+                  const newItems = [...(section.items || [])];
+                  newItems[index] = { ...newItems[index], description: e.target.value };
+                  onUpdate({ items: newItems });
+                }}
+                className="w-full h-12 p-1 text-xs rounded border border-zinc-200 resize-none"
+                placeholder="Description..."
+                dir={section.textDirection || 'rtl'}
+              />
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const newItems = [...(section.items || [])];
+              newItems.push({ icon: '📌', iconBg: '#E8E0FF', title: 'פריט חדש', description: 'תיאור...', cta: 'למידע נוסף', ctaUrl: '#' });
+              onUpdate({ items: newItems });
+            }}
+            className="w-full h-7 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Add Item
+          </Button>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Text</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Desc</span>
+            <input type="color" value={section.descColor || '#86868B'} onChange={(e) => onUpdate({ descColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">CTA</span>
+            <input type="color" value={section.ctaColor || '#5856D6'} onChange={(e) => onUpdate({ ctaColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  const renderAppCardsControls = () => (
+    <>
+      <ActionGroup label="Title" icon={Type} expanded={expanded.title} onToggle={() => toggleExpand('title')}>
+        <input
+          type="text"
+          value={section.title || ''}
+          onChange={(e) => onUpdate({ title: e.target.value })}
+          className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+          placeholder="Section title..."
+          dir={section.textDirection || 'rtl'}
+        />
+      </ActionGroup>
+      
+      <ActionGroup label="Layout" icon={Grid3X3} expanded={expanded.layout} onToggle={() => toggleExpand('layout')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Columns</span>
+            <NumberStepper value={section.columns || 3} onChange={(v) => onUpdate({ columns: v })} min={1} max={4} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Gap</span>
+            <NumberStepper value={section.gap || 20} onChange={(v) => onUpdate({ gap: v })} min={8} max={40} suffix="px" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">Accent Lines</span>
+            <input type="checkbox" checked={section.showAccentLine !== false} onChange={(e) => onUpdate({ showAccentLine: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Cards" icon={Layers} expanded={expanded.cards} onToggle={() => toggleExpand('cards')}>
+        <div className="space-y-3">
+          {(section.cards || []).map((card, index) => (
+            <div key={index} className="p-2 border border-zinc-200 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">Card {index + 1}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newCards = [...(section.cards || [])];
+                    newCards.splice(index, 1);
+                    onUpdate({ cards: newCards });
+                  }}
+                  className="h-5 w-5 p-0 text-red-500 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={card.icon || ''}
+                  onChange={(e) => {
+                    const newCards = [...(section.cards || [])];
+                    newCards[index] = { ...newCards[index], icon: e.target.value };
+                    onUpdate({ cards: newCards });
+                  }}
+                  className="w-12 h-6 px-1 text-center text-sm rounded border border-zinc-200"
+                  placeholder="🎯"
+                />
+                <input
+                  type="color"
+                  value={card.iconBg || '#F0F0F0'}
+                  onChange={(e) => {
+                    const newCards = [...(section.cards || [])];
+                    newCards[index] = { ...newCards[index], iconBg: e.target.value };
+                    onUpdate({ cards: newCards });
+                  }}
+                  className="w-6 h-6 rounded cursor-pointer"
+                  title="Icon BG"
+                />
+                <input
+                  type="color"
+                  value={card.accentColor || '#5856D6'}
+                  onChange={(e) => {
+                    const newCards = [...(section.cards || [])];
+                    newCards[index] = { ...newCards[index], accentColor: e.target.value };
+                    onUpdate({ cards: newCards });
+                  }}
+                  className="w-6 h-6 rounded cursor-pointer"
+                  title="Accent"
+                />
+              </div>
+              <input
+                type="text"
+                value={card.name || ''}
+                onChange={(e) => {
+                  const newCards = [...(section.cards || [])];
+                  newCards[index] = { ...newCards[index], name: e.target.value };
+                  onUpdate({ cards: newCards });
+                }}
+                className="w-full h-6 px-2 text-xs rounded border border-zinc-200"
+                placeholder="Name..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <textarea
+                value={card.description || ''}
+                onChange={(e) => {
+                  const newCards = [...(section.cards || [])];
+                  newCards[index] = { ...newCards[index], description: e.target.value };
+                  onUpdate({ cards: newCards });
+                }}
+                className="w-full h-12 p-1 text-xs rounded border border-zinc-200 resize-none"
+                placeholder="Description..."
+                dir={section.textDirection || 'rtl'}
+              />
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const newCards = [...(section.cards || [])];
+              newCards.push({ icon: '📱', iconBg: '#E8FFE8', name: 'אפליקציה חדשה', accentColor: '#5856D6', description: 'תיאור...', cta: 'לבדיקה', ctaUrl: '#' });
+              onUpdate({ cards: newCards });
+            }}
+            className="w-full h-7 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Add Card
+          </Button>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Card BG</span>
+            <input type="color" value={section.cardBg || '#FFFFFF'} onChange={(e) => onUpdate({ cardBg: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Text</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">CTA</span>
+            <input type="color" value={section.ctaColor || '#5856D6'} onChange={(e) => onUpdate({ ctaColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  const renderFeatureHighlightControls = () => (
+    <>
+      <ActionGroup label="Layout" icon={Grid3X3} expanded={expanded.layout} onToggle={() => toggleExpand('layout')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Img W</span>
+            <NumberStepper value={section.imageWidth || 280} onChange={(v) => onUpdate({ imageWidth: v })} min={150} max={400} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Img H</span>
+            <NumberStepper value={section.imageHeight || 200} onChange={(v) => onUpdate({ imageHeight: v })} min={100} max={400} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Gap</span>
+            <NumberStepper value={section.itemGap || 48} onChange={(v) => onUpdate({ itemGap: v })} min={20} max={80} suffix="px" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">Alternate Layout</span>
+            <input type="checkbox" checked={section.alternateLayout !== false} onChange={(e) => onUpdate({ alternateLayout: e.target.checked })} />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Highlights" icon={Layers} expanded={expanded.highlights} onToggle={() => toggleExpand('highlights')}>
+        <div className="space-y-3">
+          {(section.highlights || []).map((highlight, index) => (
+            <div key={index} className="p-2 border border-zinc-200 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">Highlight {index + 1}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newHighlights = [...(section.highlights || [])];
+                    newHighlights.splice(index, 1);
+                    onUpdate({ highlights: newHighlights });
+                  }}
+                  className="h-5 w-5 p-0 text-red-500 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+              <input
+                type="text"
+                value={highlight.title || ''}
+                onChange={(e) => {
+                  const newHighlights = [...(section.highlights || [])];
+                  newHighlights[index] = { ...newHighlights[index], title: e.target.value };
+                  onUpdate({ highlights: newHighlights });
+                }}
+                className="w-full h-6 px-2 text-xs rounded border border-zinc-200"
+                placeholder="Title..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <textarea
+                value={highlight.description || ''}
+                onChange={(e) => {
+                  const newHighlights = [...(section.highlights || [])];
+                  newHighlights[index] = { ...newHighlights[index], description: e.target.value };
+                  onUpdate({ highlights: newHighlights });
+                }}
+                className="w-full h-12 p-1 text-xs rounded border border-zinc-200 resize-none"
+                placeholder="Description..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const newHighlights = [...(section.highlights || [])];
+                        newHighlights[index] = { ...newHighlights[index], image: ev.target?.result };
+                        onUpdate({ highlights: newHighlights });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                  id={`highlight-image-${index}`}
+                />
+                <label
+                  htmlFor={`highlight-image-${index}`}
+                  className="flex-1 flex items-center justify-center gap-1 h-6 rounded bg-zinc-100 hover:bg-zinc-200 text-xs cursor-pointer"
+                >
+                  <Upload className="w-3 h-3" /> Image
+                </label>
+              </div>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const newHighlights = [...(section.highlights || [])];
+              newHighlights.push({ image: '', title: 'כותרת חדשה', description: 'תיאור...', cta: 'למידע נוסף', ctaUrl: '#' });
+              onUpdate({ highlights: newHighlights });
+            }}
+            className="w-full h-7 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Add Highlight
+          </Button>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Text</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Desc</span>
+            <input type="color" value={section.descColor || '#666666'} onChange={(e) => onUpdate({ descColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">CTA</span>
+            <input type="color" value={section.ctaColor || '#1D1D1F'} onChange={(e) => onUpdate({ ctaColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  const renderHeroBannerControls = () => (
+    <>
+      <ActionGroup label="Title" icon={Type} expanded={expanded.title} onToggle={() => toggleExpand('title')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.title || ''}
+            onChange={(e) => onUpdate({ title: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Title..."
+            dir={section.textDirection || 'ltr'}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.titleFontSize || 72} onChange={(v) => onUpdate({ titleFontSize: v })} min={32} max={200} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.titleFontWeight || '900'} onChange={(e) => onUpdate({ titleFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="700">Bold</option>
+              <option value="900">Black</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Position</span>
+            <select value={section.titlePosition || 'top'} onChange={(e) => onUpdate({ titlePosition: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="top">Above Image</option>
+              <option value="overlay">Over Image</option>
+              <option value="bottom">Below Image</option>
+            </select>
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Image" icon={Image} expanded={expanded.image} onToggle={() => toggleExpand('image')}>
+        <div className="space-y-2">
+          {section.image && (
+            <div className="relative w-full h-20 bg-zinc-100 rounded overflow-hidden">
+              <img src={section.image} alt="Hero" className="w-full h-full object-cover" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onUpdate({ image: '' })}
+                className="absolute top-1 right-1 h-5 w-5 p-0 bg-white/80 hover:bg-red-50"
+              >
+                <Trash2 className="w-3 h-3 text-red-500" />
+              </Button>
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => onUpdate({ image: ev.target?.result });
+                reader.readAsDataURL(file);
+              }
+            }}
+            className="hidden"
+            id="hero-banner-image"
+          />
+          <label
+            htmlFor="hero-banner-image"
+            className="w-full flex items-center justify-center gap-1 h-7 rounded bg-zinc-100 hover:bg-zinc-200 text-xs cursor-pointer"
+          >
+            <Upload className="w-3 h-3" /> Upload Image
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Height</span>
+            <NumberStepper value={section.imageHeight || 400} onChange={(v) => onUpdate({ imageHeight: v })} min={200} max={600} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Subtitle" icon={Type} expanded={expanded.subtitle} onToggle={() => toggleExpand('subtitle')}>
+        <div className="space-y-2">
+          <textarea
+            value={section.subtitle || ''}
+            onChange={(e) => onUpdate({ subtitle: e.target.value })}
+            className="w-full h-16 p-2 text-xs rounded border border-zinc-200 resize-none"
+            placeholder="Subtitle..."
+            dir={section.textDirection || 'ltr'}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.subtitleFontSize || 16} onChange={(v) => onUpdate({ subtitleFontSize: v })} min={12} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.subtitleColor || '#666666'} onChange={(e) => onUpdate({ subtitleColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Title</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+      
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+      {renderLineDividerControls()}
+    </>
+  );
+
+  const renderCelebrationControls = () => (
+    <>
+      <ActionGroup label="Badge" icon={Type} expanded={expanded.badge} onToggle={() => toggleExpand('badge')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.badgeText || ''}
+            onChange={(e) => onUpdate({ badgeText: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Badge text..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.badgeFontSize || 16} onChange={(v) => onUpdate({ badgeFontSize: v })} min={12} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-zinc-400">BG</span>
+              <input type="color" value={section.badgeColor || '#04D1FC'} onChange={(e) => onUpdate({ badgeColor: e.target.value })} className="w-5 h-5 rounded cursor-pointer" />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-zinc-400">Text</span>
+              <input type="color" value={section.badgeTextColor || '#FFFFFF'} onChange={(e) => onUpdate({ badgeTextColor: e.target.value })} className="w-5 h-5 rounded cursor-pointer" />
+            </div>
+          </div>
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Names" icon={Users} expanded={expanded.names} onToggle={() => toggleExpand('names')}>
+        <textarea
+          value={section.names || ''}
+          onChange={(e) => onUpdate({ names: e.target.value })}
+          className="w-full h-20 p-2 text-xs rounded border border-zinc-200 resize-none"
+          placeholder="Enter names..."
+          dir={section.textDirection || 'rtl'}
+        />
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] text-zinc-400 w-12">Size</span>
+          <NumberStepper value={section.nameFontSize || 18} onChange={(v) => onUpdate({ nameFontSize: v })} min={12} max={32} suffix="px" />
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Message" icon={Type} expanded={expanded.message} onToggle={() => toggleExpand('message')}>
+        <textarea
+          value={section.message || ''}
+          onChange={(e) => onUpdate({ message: e.target.value })}
+          className="w-full h-16 p-2 text-xs rounded border border-zinc-200 resize-none"
+          placeholder="Enter message..."
+          dir={section.textDirection || 'rtl'}
+        />
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] text-zinc-400 w-12">Size</span>
+          <NumberStepper value={section.messageFontSize || 18} onChange={(v) => onUpdate({ messageFontSize: v })} min={12} max={32} suffix="px" />
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Accent" icon={Palette} expanded={expanded.accent} onToggle={() => toggleExpand('accent')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.accentColor || '#FF6B6B'} onChange={(e) => onUpdate({ accentColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Width</span>
+            <NumberStepper value={section.accentWidth || 4} onChange={(v) => onUpdate({ accentWidth: v })} min={2} max={12} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+    </>
+  );
+
+  const renderHeroSplitControls = () => (
+    <>
+      <ActionGroup label="Headline" icon={Type} expanded={expanded.headline} onToggle={() => toggleExpand('headline')}>
+        <div className="space-y-2">
+          <textarea
+            value={section.headline || ''}
+            onChange={(e) => onUpdate({ headline: e.target.value })}
+            className="w-full h-16 p-2 text-xs rounded border border-zinc-200 resize-none"
+            placeholder="Enter headline..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.headlineFontSize || 48} onChange={(v) => onUpdate({ headlineFontSize: v })} min={24} max={96} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Description" icon={Type} expanded={expanded.description} onToggle={() => toggleExpand('description')}>
+        <div className="space-y-2">
+          <textarea
+            value={section.description || ''}
+            onChange={(e) => onUpdate({ description: e.target.value })}
+            className="w-full h-24 p-2 text-xs rounded border border-zinc-200 resize-none"
+            placeholder="Enter description..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
+            <NumberStepper value={section.descFontSize || 16} onChange={(v) => onUpdate({ descFontSize: v })} min={12} max={24} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Link" icon={Type} expanded={expanded.link} onToggle={() => toggleExpand('link')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.linkText || ''}
+            onChange={(e) => onUpdate({ linkText: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Link text..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <input
+            type="text"
+            value={section.linkUrl || '#'}
+            onChange={(e) => onUpdate({ linkUrl: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Link URL..."
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input type="color" value={section.linkColor || '#5856D6'} onChange={(e) => onUpdate({ linkColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Image" icon={Image} expanded={expanded.image} onToggle={() => toggleExpand('image')}>
+        <div className="space-y-2">
+          {section.image && (
+            <div className="relative w-full h-20 bg-zinc-100 rounded overflow-hidden">
+              <img src={section.image} alt="Hero" className="w-full h-full object-cover" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onUpdate({ image: '' })}
+                className="absolute top-1 right-1 h-5 w-5 p-0 bg-white/80 hover:bg-red-50"
+              >
+                <Trash2 className="w-3 h-3 text-red-500" />
+              </Button>
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => onUpdate({ image: ev.target?.result });
+                reader.readAsDataURL(file);
+              }
+            }}
+            className="w-full text-xs"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Height</span>
+            <NumberStepper value={section.imageHeight || 400} onChange={(v) => onUpdate({ imageHeight: v })} min={100} max={800} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Position</span>
+            <select value={section.imagePosition || 'top'} onChange={(e) => onUpdate({ imagePosition: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+        </div>
+      </ActionGroup>
+
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+    </>
+  );
+
+  const renderAlternatingControls = () => (
+    <>
+      <ActionGroup label="Rows" icon={LayoutGrid} expanded={expanded.rows} onToggle={() => toggleExpand('rows')}>
+        <div className="space-y-3">
+          {(section.rows || []).map((row, index) => (
+            <div key={index} className="p-2 bg-zinc-50 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-medium text-zinc-500">Row {index + 1}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const newRows = [...(section.rows || [])];
+                    newRows.splice(index, 1);
+                    onUpdate({ rows: newRows });
+                  }}
+                  className="h-5 w-5 p-0 text-red-500 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+              <input
+                type="text"
+                value={row.title || ''}
+                onChange={(e) => {
+                  const newRows = [...(section.rows || [])];
+                  newRows[index] = { ...newRows[index], title: e.target.value };
+                  onUpdate({ rows: newRows });
+                }}
+                className="w-full h-6 px-2 text-xs rounded border border-zinc-200"
+                placeholder="Title..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <textarea
+                value={row.description || ''}
+                onChange={(e) => {
+                  const newRows = [...(section.rows || [])];
+                  newRows[index] = { ...newRows[index], description: e.target.value };
+                  onUpdate({ rows: newRows });
+                }}
+                className="w-full h-12 p-2 text-xs rounded border border-zinc-200 resize-none"
+                placeholder="Description..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={row.linkText || ''}
+                  onChange={(e) => {
+                    const newRows = [...(section.rows || [])];
+                    newRows[index] = { ...newRows[index], linkText: e.target.value };
+                    onUpdate({ rows: newRows });
+                  }}
+                  className="flex-1 h-6 px-2 text-xs rounded border border-zinc-200"
+                  placeholder="Link text..."
+                  dir={section.textDirection || 'rtl'}
+                />
+              </div>
+              {row.image ? (
+                <div className="relative w-full h-12 bg-zinc-100 rounded overflow-hidden">
+                  <img src={row.image} alt="" className="w-full h-full object-cover" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const newRows = [...(section.rows || [])];
+                      newRows[index] = { ...newRows[index], image: '' };
+                      onUpdate({ rows: newRows });
+                    }}
+                    className="absolute top-1 right-1 h-4 w-4 p-0 bg-white/80"
+                  >
+                    <Trash2 className="w-2.5 h-2.5 text-red-500" />
+                  </Button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const newRows = [...(section.rows || [])];
+                        newRows[index] = { ...newRows[index], image: ev.target?.result };
+                        onUpdate({ rows: newRows });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full text-[10px]"
+                />
+              )}
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const newRows = [...(section.rows || []), {
+                image: '',
+                title: 'כותרת חדשה',
+                description: 'תיאור קצר',
+                linkText: 'למד עוד',
+                linkUrl: '#'
+              }];
+              onUpdate({ rows: newRows });
+            }}
+            className="w-full h-7 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Add Row
+          </Button>
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Layout" icon={Settings} expanded={expanded.layout} onToggle={() => toggleExpand('layout')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Img Width</span>
+            <select value={section.imageWidth || '45%'} onChange={(e) => onUpdate({ imageWidth: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="35%">35%</option>
+              <option value="40%">40%</option>
+              <option value="45%">45%</option>
+              <option value="50%">50%</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Img Height</span>
+            <NumberStepper value={section.imageHeight || 250} onChange={(v) => onUpdate({ imageHeight: v })} min={100} max={500} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Row Gap</span>
+            <NumberStepper value={section.rowGap || 48} onChange={(v) => onUpdate({ rowGap: v })} min={16} max={80} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Start</span>
+            <select value={section.startImagePosition || 'left'} onChange={(e) => onUpdate({ startImagePosition: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="left">Image Left</option>
+              <option value="right">Image Right</option>
+            </select>
+          </div>
+        </div>
+      </ActionGroup>
+
+      <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Title</span>
+            <input type="color" value={section.textColor || '#1D1D1F'} onChange={(e) => onUpdate({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Desc</span>
+            <input type="color" value={section.descriptionColor || '#86868B'} onChange={(e) => onUpdate({ descriptionColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Link</span>
+            <input type="color" value={section.linkColor || '#1D1D1F'} onChange={(e) => onUpdate({ linkColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+        </div>
+      </ActionGroup>
+
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+    </>
+  );
+
   const renderDefaultControls = () => (
     <>
       {/* Background - available for all sections */}
@@ -1570,13 +4204,8 @@ function SectionActionBar({
         isDragging && "shadow-2xl ring-2 ring-[#04D1FC]/30 pointer-events-none"
       )}
       style={{ 
-        ...(hasBeenDragged ? {
-          left: barPosition.x,
-          top: barPosition.y,
-        } : {
-          top: position.top,
-          right: position.right,
-        }),
+        left: barPosition.x,
+        top: barPosition.y,
         maxHeight: '700px',
         cursor: isDragging ? 'grabbing' : 'default'
       }}
@@ -1689,6 +4318,19 @@ function VerticalAlignControl({ value, onChange }) {
       ))}
     </div>
   );
+}
+
+// Marquee Icon Preview Component
+function MarqueeIconPreview({ iconName }) {
+  const IconComponent = getIconByName(iconName);
+  if (!IconComponent) {
+    // Check if it's an emoji
+    if (iconName && iconName.length <= 2) {
+      return <span className="text-sm">{iconName}</span>;
+    }
+    return <Smile className="w-4 h-4 text-zinc-400" />;
+  }
+  return <IconComponent className="w-4 h-4" />;
 }
 
 // Number Stepper Component

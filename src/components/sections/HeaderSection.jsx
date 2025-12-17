@@ -100,6 +100,7 @@ function HeaderSection({
   logoWidth = 120,
   logoHeight = 'auto',
   logoAlignment = 'center',
+  logoOffsetY = 0,
   // Hero image (below logo)
   heroImage,
   heroImageWidth = '100%',
@@ -182,7 +183,8 @@ function HeaderSection({
   };
 
   const logoContainerStyle = {
-    textAlign: logoAlignment
+    textAlign: logoAlignment,
+    transform: logoOffsetY !== 0 ? `translateY(${logoOffsetY}px)` : undefined
   };
 
   const logoStyle = {
@@ -245,7 +247,13 @@ function HeaderSection({
     letterSpacing: '0.05em'
   };
 
-  const showHero = heroImage || showHeroPlaceholder;
+  // Only show hero if there's an actual image, OR if in editing mode with placeholder enabled
+  const showHero = heroImage || (isEditing && showHeroPlaceholder);
+  
+  // Check if there's any text content
+  const hasTitle = title && title.trim().length > 0;
+  const hasSubtitle = subtitle && subtitle.trim().length > 0;
+  const hasAnyContent = logo || showHero || hasTitle || hasSubtitle;
 
   return (
     <div style={headerStyle}>
@@ -264,14 +272,16 @@ function HeaderSection({
       
       {/* Content wrapper with z-index */}
       <div style={{ position: 'relative', zIndex: 2 }}>
-      {/* Top Padding Handle */}
-      <InlineSpacerHandle
-        value={paddingTop}
-        onChange={(v) => handleSpacingChange('paddingTop', v)}
-        min={8}
-        max={120}
-        isEditing={isEditing}
-      />
+      {/* Top Padding Handle - only show if there's any content */}
+      {hasAnyContent && (
+        <InlineSpacerHandle
+          value={paddingTop}
+          onChange={(v) => handleSpacingChange('paddingTop', v)}
+          min={8}
+          max={120}
+          isEditing={isEditing}
+        />
+      )}
 
       {logo && (
         <>
@@ -283,11 +293,11 @@ function HeaderSection({
             />
           </div>
           
-          {/* Logo to Hero Spacing Handle */}
-          {showHero && (
+          {/* Logo to Hero/Title Spacing Handle - show if there's something after logo */}
+          {(showHero || hasTitle || hasSubtitle) && (
             <InlineSpacerHandle
-              value={spacingLogoToHero}
-              onChange={(v) => handleSpacingChange('spacingLogoToHero', v)}
+              value={showHero ? spacingLogoToHero : spacingHeroToTitle}
+              onChange={(v) => handleSpacingChange(showHero ? 'spacingLogoToHero' : 'spacingHeroToTitle', v)}
               min={0}
               max={80}
               isEditing={isEditing}
@@ -314,8 +324,8 @@ function HeaderSection({
             )}
           </div>
           
-          {/* Hero to Title Spacing Handle */}
-          {title && (
+          {/* Hero to Title Spacing Handle - only if there's title or subtitle after */}
+          {(hasTitle || hasSubtitle) && (
             <InlineSpacerHandle
               value={spacingHeroToTitle}
               onChange={(v) => handleSpacingChange('spacingHeroToTitle', v)}
@@ -327,14 +337,14 @@ function HeaderSection({
         </>
       )}
       
-      {title && (
+      {hasTitle && (
         <h1 style={titleStyle}>
           {title}
         </h1>
       )}
       
-      {/* Title to Subtitle Spacing Handle */}
-      {title && subtitle && (
+      {/* Title to Subtitle Spacing Handle - only if both exist */}
+      {hasTitle && hasSubtitle && (
         <InlineSpacerHandle
           value={spacingTitleToSubtitle}
           onChange={(v) => handleSpacingChange('spacingTitleToSubtitle', v)}
@@ -344,7 +354,7 @@ function HeaderSection({
         />
       )}
       
-      {subtitle && (
+      {hasSubtitle && (
         <p style={{ 
           fontFamily: "'Poppins', 'Noto Sans Hebrew', Arial, sans-serif", 
           fontSize: `${subtitleFontSize}px`,
@@ -359,14 +369,16 @@ function HeaderSection({
         </p>
       )}
 
-      {/* Bottom Padding Handle */}
-      <InlineSpacerHandle
-        value={paddingBottom}
-        onChange={(v) => handleSpacingChange('paddingBottom', v)}
-        min={8}
-        max={120}
-        isEditing={isEditing}
-      />
+      {/* Bottom Padding Handle - only show if there's any content */}
+      {hasAnyContent && (
+        <InlineSpacerHandle
+          value={paddingBottom}
+          onChange={(v) => handleSpacingChange('paddingBottom', v)}
+          min={8}
+          max={120}
+          isEditing={isEditing}
+        />
+      )}
 
       {showDateBadge && dateBadgeText && (
         <div style={dateBadgeStyle}>

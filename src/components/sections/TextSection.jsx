@@ -8,8 +8,9 @@ const FONT_STACKS = {
 
 function TextSection({ 
   content, 
-  textAlign, 
-  direction, 
+  textAlign = 'right', 
+  direction,
+  textDirection = 'rtl', // Support both props
   fontFamily, 
   fontSize, 
   color, 
@@ -28,7 +29,9 @@ function TextSection({
   onContentChange,
   minHeight
 }) {
-  const fontStack = FONT_STACKS[fontFamily] || FONT_STACKS['Poppins'];
+  // Use textDirection if provided, otherwise fall back to direction
+  const actualDirection = textDirection || direction || 'rtl';
+  const fontStack = FONT_STACKS[fontFamily] || FONT_STACKS['Noto Sans Hebrew'];
   const editableRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [localContent, setLocalContent] = useState(content || '');
@@ -80,8 +83,8 @@ function TextSection({
     fontFamily: fontStack,
     fontSize: `${fontSize || 16}px`,
     color: color || '#333333',
-    textAlign: textAlign || 'center',
-    direction: direction || 'ltr',
+    textAlign: textAlign || 'right',
+    direction: actualDirection,
     lineHeight: customLineHeight || 1.6,
     letterSpacing: letterSpacing || 'normal',
     whiteSpace: 'pre-wrap',

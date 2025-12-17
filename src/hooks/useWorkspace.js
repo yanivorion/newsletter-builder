@@ -236,15 +236,15 @@ export function useWorkspace() {
   // Load state from saved data
   const loadState = useCallback((state) => {
     if (state) {
-      const ws = workspaceRef.current;
-      ws.newsletters = state.newsletters || [];
-      ws.zoom = state.zoom || 1;
-      ws.newsletters.forEach(n => {
+    const ws = workspaceRef.current;
+    ws.newsletters = state.newsletters || [];
+    ws.zoom = state.zoom || 1;
+    ws.newsletters.forEach(n => {
         ws.histories[n.id] = { states: [JSON.parse(JSON.stringify(n.data))], index: 0 };
-      });
-      ws.activeNewsletterId = ws.newsletters[0]?.id || null;
-      ws.selectedSectionId = null;
-      forceUpdate(n => n + 1);
+    });
+    ws.activeNewsletterId = ws.newsletters[0]?.id || null;
+    ws.selectedSectionId = null;
+    forceUpdate(n => n + 1);
     }
   }, []);
 

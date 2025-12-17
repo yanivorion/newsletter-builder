@@ -1,6 +1,22 @@
 // Email-compatible HTML export
 // Uses table-based layout with inline styles for maximum email client compatibility
 
+// Helper to check if image is base64 and optimize it
+function optimizeImageForEmail(imgSrc, maxWidth = 600) {
+  // If it's not a base64 image, return as-is
+  if (!imgSrc || !imgSrc.startsWith('data:image')) {
+    return imgSrc;
+  }
+  
+  // For very long base64 strings (over 50KB), warn but still include
+  // In production, recommend using hosted images
+  if (imgSrc.length > 50000) {
+    console.warn('Large base64 image detected. For better email delivery, consider using hosted image URLs.');
+  }
+  
+  return imgSrc;
+}
+
 // Google Fonts URL for email
 const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap';
 
@@ -140,12 +156,9 @@ export function exportForGmail(newsletter) {
     }
   }).join('\n');
 
-  // For Gmail paste, include Google Fonts in a style block at the top
-  // Gmail may strip this, but it works in many cases
-  return `<style>
-@import url('${GOOGLE_FONTS_URL}');
-</style>
-<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px; margin: 0 auto; font-family: ${FONT_STACKS['default']};">
+  // For Gmail paste - simple table without contenteditable (Gmail ignores it anyway)
+  // Gmail strips most attributes and makes content editable in compose mode - this is expected
+  return `<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px; margin: 0 auto; font-family: ${FONT_STACKS['default']};">
   ${sections}
 </table>`;
 }
@@ -273,47 +286,65 @@ function exportImageCollage(section) {
   const focalPoints = section.focalPoints || [];
   const imageBackgrounds = section.imageBackgrounds || [];
   const imageOverlays = section.imageOverlays || [];
+  const sectionPadding = section.padding ?? 20;
+  
+  // Handle single/full-width layout for GIF exports
+  const isSingleLayout = section.layout === 'single' || section.layout === 'single-wide';
   
   let columnsCount = 4;
-  if (section.layout === '2-column') columnsCount = 2;
+  if (isSingleLayout) columnsCount = 1;
+  else if (section.layout === '2-column') columnsCount = 2;
   else if (section.layout === '3-column') columnsCount = 3;
   else if (section.layout === '4-column') columnsCount = 4;
 
-  const imageWidth = Math.floor((600 - 40 - (gap * (columnsCount - 1))) / columnsCount);
+  // Calculate width based on container width minus padding and gaps
+  const containerWidth = 600 - (sectionPadding * 2);
+  const totalGapWidth = gap * (columnsCount - 1);
+  const imageWidth = isSingleLayout ? 600 : Math.floor((containerWidth - totalGapWidth) / columnsCount);
 
   let imageCells = '';
-  for (let i = 0; i < images.length; i++) {
-    if (!images[i]) continue;
-    
+  const validImages = images.filter(img => img);
+  
+  for (let i = 0; i < validImages.length; i++) {
+    const img = validImages[i];
     const isLastInRow = (i + 1) % columnsCount === 0;
+    const isLastImage = i === validImages.length - 1;
     const focalPoint = focalPoints[i] || { x: 50, y: 50 };
     const bgColor = imageBackgrounds[i] || '';
     const overlay = imageOverlays[i] || { color: '', opacity: 0 };
     
+    // Use table-based layout for better email client compatibility
+    // Background images in VML for Outlook compatibility
     let cellContent = '';
     
+    const borderRadius = isSingleLayout ? '0' : '4px';
+    
     if (bgColor) {
+      // Image with background color (for transparent PNGs)
       cellContent = `
-        <div style="width: ${imageWidth}px; height: ${imageHeight}px; background-color: ${bgColor}; border-radius: 4px; position: relative; overflow: hidden;">
-          <img src="${images[i]}" alt="Image ${i + 1}" style="width: 100%; height: 100%; display: block; object-fit: contain; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
-          ${overlay.color && overlay.opacity > 0 ? `<div style="position: absolute; inset: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` : ''}
-        </div>`;
-    } else if (overlay.color && overlay.opacity > 0) {
-      cellContent = `
-        <div style="width: ${imageWidth}px; height: ${imageHeight}px; position: relative; overflow: hidden; border-radius: 4px;">
-          <img src="${images[i]}" alt="Image ${i + 1}" style="width: 100%; height: 100%; display: block; object-fit: cover; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
-          <div style="position: absolute; inset: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>
-        </div>`;
+        <table role="presentation" width="${imageWidth}" height="${imageHeight}" cellspacing="0" cellpadding="0" border="0" style="border-radius: ${borderRadius}; overflow: hidden;">
+          <tr>
+            <td style="background-color: ${bgColor}; text-align: center; vertical-align: middle;">
+              <img src="${img}" alt="Image ${i + 1}" width="${imageWidth}" height="${imageHeight}" style="display: block; max-width: 100%; height: auto; border-radius: ${borderRadius};" />
+            </td>
+          </tr>
+        </table>`;
     } else {
-      cellContent = `<img src="${images[i]}" alt="Image ${i + 1}" style="width: ${imageWidth}px; height: ${imageHeight}px; display: block; object-fit: cover; object-position: ${focalPoint.x}% ${focalPoint.y}%; border-radius: 4px;" />`;
+      // Regular image - use explicit width/height for email compatibility
+      cellContent = `<img src="${img}" alt="Image ${i + 1}" width="${imageWidth}" height="${imageHeight}" style="display: block; width: ${imageWidth}px; height: ${imageHeight}px; border-radius: ${borderRadius}; object-fit: cover;" />`;
     }
     
+    // Calculate padding - no padding for single layout, otherwise normal gaps
+    const rightPadding = isSingleLayout ? 0 : ((isLastInRow || isLastImage) ? 0 : gap);
+    const bottomPadding = isSingleLayout ? 0 : gap;
+    
     imageCells += `
-      <td style="padding: 0 ${isLastInRow ? 0 : gap}px ${gap}px 0; vertical-align: top;">
+      <td width="${imageWidth}" style="padding: 0 ${rightPadding}px ${bottomPadding}px 0; vertical-align: top;">
         ${cellContent}
       </td>`;
     
-    if (isLastInRow && i < images.length - 1) {
+    // Start new row if needed (but not after last image)
+    if (isLastInRow && !isLastImage) {
       imageCells += `
     </tr>
     <tr>`;
@@ -322,10 +353,13 @@ function exportImageCollage(section) {
 
   if (!imageCells) return '';
 
+  // Use section padding (0 for GIF exports)
+  const outerPadding = isSingleLayout && sectionPadding === 0 ? 0 : sectionPadding;
+
   return `
     <tr>
-      <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+      <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: ${outerPadding}px;">
+        <table role="presentation" width="${isSingleLayout ? 600 : '100%'}" cellspacing="0" cellpadding="0" border="0">
           <tr>
             ${imageCells}
           </tr>

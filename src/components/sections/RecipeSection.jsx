@@ -57,20 +57,29 @@ function RecipeSection({
     zIndex: 2
   };
 
+  // Check if content exists
+  const hasTitle = title && title.trim().length > 0;
+  const hasImage = image && image.trim && image.trim().length > 0;
+  const hasIngredients = ingredients && ingredients.trim().length > 0;
+  const hasInstructions = instructions && instructions.trim().length > 0;
+  const hasContentAfterTitle = hasImage || hasIngredients || hasInstructions;
+  const hasContentAfterImage = hasIngredients || hasInstructions;
+  const hasContentAfterIngredients = hasInstructions;
+
   const titleStyle = {
     fontFamily: 'Noto Sans Hebrew, sans-serif',
     fontSize: '24px',
     fontWeight: '600',
     color: '#333333',
     textAlign: 'center',
-    marginBottom: '20px',
+    marginBottom: hasContentAfterTitle ? '20px' : 0,
     direction: 'rtl'
   };
 
   const imageContainerStyle = {
     width: '100%',
     height: `${imageHeight}px`,
-    marginBottom: '20px',
+    marginBottom: hasContentAfterImage ? '20px' : 0,
     borderRadius: '8px',
     overflow: 'hidden',
     position: 'relative'
@@ -116,34 +125,40 @@ function RecipeSection({
       )}
       
       <div style={contentStyle}>
-        <h2 style={titleStyle}>{title || 'Recipe Title'}</h2>
+        {hasTitle && <h2 style={titleStyle}>{title}</h2>}
         
-        <div style={imageContainerStyle}>
-          {image ? (
-            <img 
-              src={image} 
-              alt={title} 
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                objectFit: imageFit 
-              }} 
-            />
-          ) : (
-            <div style={placeholderStyle}>
-              <ImageIcon size={48} strokeWidth={1} />
-              <span style={{ marginTop: '8px', fontSize: '14px' }}>Click to add recipe image</span>
-            </div>
-          )}
-        </div>
+        {(hasImage || isSelected) && (
+          <div style={imageContainerStyle}>
+            {image ? (
+              <img 
+                src={image} 
+                alt={title} 
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: imageFit 
+                }} 
+              />
+            ) : isSelected ? (
+              <div style={placeholderStyle}>
+                <ImageIcon size={48} strokeWidth={1} />
+                <span style={{ marginTop: '8px', fontSize: '14px' }}>Click to add recipe image</span>
+              </div>
+            ) : null}
+          </div>
+        )}
 
-        <div style={textBlockStyle}>
-          {ingredients || 'Ingredients:\n- Ingredient 1\n- Ingredient 2\n- Ingredient 3'}
-        </div>
+        {hasIngredients && (
+          <div style={{ ...textBlockStyle, marginBottom: hasContentAfterIngredients ? '15px' : 0 }}>
+            {ingredients}
+          </div>
+        )}
 
-        <div style={textBlockStyle}>
-          {instructions || 'Instructions:\n1. Step one\n2. Step two\n3. Step three'}
-        </div>
+        {hasInstructions && (
+          <div style={{ ...textBlockStyle, marginBottom: 0 }}>
+            {instructions}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ function WorkspaceCanvas({
   const [isPanning, setIsPanning] = useState(false);
   const [panOffset, setPanOffset] = useState({ x: 100, y: 100 });
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
-  
+
   // Dragging newsletter state
   const [draggingId, setDraggingId] = useState(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -43,9 +43,9 @@ function WorkspaceCanvas({
     // Only pan if clicking on canvas background (not on a card)
     if (e.target === canvasRef.current || e.target.classList.contains('canvas-background')) {
       if (e.button === 1 || (e.button === 0 && (e.altKey || e.spaceKey))) {
-        setIsPanning(true);
-        setStartPan({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
-        e.preventDefault();
+      setIsPanning(true);
+      setStartPan({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+      e.preventDefault();
       }
     }
   }, [panOffset]);
@@ -193,28 +193,28 @@ function WorkspaceCanvas({
                 transition: isDragging ? 'none' : 'box-shadow 0.2s',
               }}
             >
-              <NewsletterCard
-                id={newsletter.id}
-                name={newsletter.name}
-                newsletter={newsletter.data}
-                isActive={activeNewsletterId === newsletter.id}
-                selectedSectionId={activeNewsletterId === newsletter.id ? selectedSectionId : null}
-                onSelect={() => onSelectNewsletter(newsletter.id)}
-                onSectionClick={(sectionId) => {
-                  onSelectNewsletter(newsletter.id);
-                  onSelectSection(sectionId);
-                }}
-                onRename={(name) => onRenameNewsletter(newsletter.id, name)}
-                onDuplicate={() => onDuplicateNewsletter(newsletter.id)}
-                onDelete={() => onDeleteNewsletter(newsletter.id)}
-                onAddSection={onAddSection}
-                onReorderSections={onReorderSections}
-                onSectionUpdate={onSectionUpdate}
-                isUnlocked={isUnlocked}
-                canDelete={newsletters.length > 1}
+          <NewsletterCard
+            id={newsletter.id}
+            name={newsletter.name}
+            newsletter={newsletter.data}
+            isActive={activeNewsletterId === newsletter.id}
+            selectedSectionId={activeNewsletterId === newsletter.id ? selectedSectionId : null}
+            onSelect={() => onSelectNewsletter(newsletter.id)}
+            onSectionClick={(sectionId) => {
+              onSelectNewsletter(newsletter.id);
+              onSelectSection(sectionId);
+            }}
+            onRename={(name) => onRenameNewsletter(newsletter.id, name)}
+            onDuplicate={() => onDuplicateNewsletter(newsletter.id)}
+            onDelete={() => onDeleteNewsletter(newsletter.id)}
+            onAddSection={onAddSection}
+            onReorderSections={onReorderSections}
+            onSectionUpdate={onSectionUpdate}
+            isUnlocked={isUnlocked}
+            canDelete={newsletters.length > 1}
                 onDragStart={(e) => handleNewsletterDragStart(newsletter.id, e)}
                 isDragging={isDragging}
-              />
+          />
             </div>
           );
         })}

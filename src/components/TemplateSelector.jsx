@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LogIn, User } from 'lucide-react';
 
 // Blank starter template
 const blankTemplate = {
@@ -27,7 +27,7 @@ const blankTemplate = {
   ]
 };
 
-function TemplateSelector({ onSelectTemplate, hasSavedNewsletter, onContinueEditing }) {
+function TemplateSelector({ onSelectTemplate, hasSavedNewsletter, onContinueEditing, onShowAuth, isAuthenticated, user }) {
   const [hoveredButton, setHoveredButton] = useState(null);
 
   // Colors
@@ -40,6 +40,9 @@ function TemplateSelector({ onSelectTemplate, hasSavedNewsletter, onContinueEdit
   const secondaryButtonBg = "#FAFAF9";
   const secondaryButtonText = "#1C1917";
   const cardBorderColor = "#E7E5E4";
+  
+  // Get user display name
+  const displayName = user?.email?.split('@')[0] || 'User';
 
   // Create dot pattern background
   const dotPattern = `radial-gradient(circle, ${dotColor} 1px, transparent 1px)`;
@@ -66,15 +69,67 @@ function TemplateSelector({ onSelectTemplate, hasSavedNewsletter, onContinueEdit
         margin: '0 auto',
         textAlign: 'center'
       }}>
-        {/* Logo/Brand */}
+        {/* Header with Logo and Auth */}
         <div style={{
-          fontSize: '20px',
-          fontWeight: '500',
-          color: heroTextColor,
-          marginBottom: '80px',
-          letterSpacing: '-0.02em'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '80px'
         }}>
-          NewsKit
+          {/* Logo/Brand */}
+          <div style={{
+            fontSize: '20px',
+            fontWeight: '500',
+            color: heroTextColor,
+            letterSpacing: '-0.02em'
+          }}>
+            NewsKit
+          </div>
+          
+          {/* Auth Button */}
+          {onShowAuth && (
+            isAuthenticated ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                backgroundColor: secondaryButtonBg,
+                borderRadius: '8px',
+                border: `1px solid ${cardBorderColor}`
+              }}>
+                <User size={16} color={heroTextColor} />
+                <span style={{ fontSize: '14px', color: heroTextColor }}>{displayName}</span>
+              </div>
+            ) : (
+              <button
+                onClick={onShowAuth}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  backgroundColor: secondaryButtonBg,
+                  border: `1px solid ${cardBorderColor}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: heroTextColor,
+                  fontWeight: '500',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#F5F5F4';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = secondaryButtonBg;
+                }}
+              >
+                <LogIn size={16} />
+                Sign in
+              </button>
+            )
+          )}
         </div>
 
         {/* Hero Headline */}
