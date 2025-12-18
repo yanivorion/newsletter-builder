@@ -94,9 +94,9 @@ const MarqueeSection = forwardRef(function MarqueeSection({
     
     // Check if it's a react-icons icon
     const IconComponent = iconMap[selectedIcon];
-    if (IconComponent) {
-      return <IconComponent style={iconStyle} />;
-    }
+      if (IconComponent) {
+        return <IconComponent style={iconStyle} />;
+      }
     
     // Check if it's an emoji (short string)
     if (selectedIcon.length <= 4) {
@@ -121,14 +121,14 @@ const MarqueeSection = forwardRef(function MarqueeSection({
       <div style={trackStyle}>
         {marqueeItems.map((_, index) => (
           <React.Fragment key={index}>
-            <span style={itemStyle}>
+              <span style={itemStyle}>
               {renderIcon()}
               <span>{text}</span>
-            </span>
+              </span>
             {index < marqueeItems.length - 1 && (
-              <span style={separatorStyle}>{separator}</span>
-            )}
-          </React.Fragment>
+                <span style={separatorStyle}>{separator}</span>
+              )}
+            </React.Fragment>
         ))}
       </div>
     </div>

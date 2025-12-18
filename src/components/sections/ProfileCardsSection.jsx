@@ -223,10 +223,10 @@ function ProfileCardsSection({
           }
           
           return (
-            <div key={index} style={cardStyle}>
-              {profile && profile.image ? (
-                <div 
-                  style={{
+          <div key={index} style={cardStyle}>
+            {profile && profile.image ? (
+              <div 
+                style={{
                     width: '100px',
                     height: '100px',
                     borderRadius: imageShape === 'circular' ? '50%' : '8px',
@@ -244,13 +244,13 @@ function ProfileCardsSection({
                       height: '100%',
                       objectFit: 'cover',
                       display: 'block'
-                    }} 
+                }}
                   />
-                </div>
+              </div>
               ) : (
                 <ProfilePlaceholderIcon size={100} shape={imageShape} />
-              )}
-              {showName && (
+            )}
+            {showName && (
                 <div 
                   {...editableProps(`profile-${index}-name`)}
                   style={{
@@ -258,10 +258,10 @@ function ProfileCardsSection({
                     outline: editingField === `profile-${index}-name` ? '2px dashed #04D1FC' : 'none'
                   }}
                 >
-                  {profile?.name || `Name ${index + 1}`}
-                </div>
-              )}
-              {showTitle && (
+                {profile?.name || `Name ${index + 1}`}
+              </div>
+            )}
+            {showTitle && (
                 <div 
                   {...editableProps(`profile-${index}-title`)}
                   style={{
@@ -269,10 +269,10 @@ function ProfileCardsSection({
                     outline: editingField === `profile-${index}-title` ? '2px dashed #04D1FC' : 'none'
                   }}
                 >
-                  {profile?.title || 'Position'}
-                </div>
-              )}
-            </div>
+                {profile?.title || 'Position'}
+              </div>
+            )}
+          </div>
           );
         })}
       </div>

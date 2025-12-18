@@ -102,6 +102,7 @@ function SectionActionBar({
   const [showIconPicker, setShowIconPicker] = useState(false);
   const fileInputRef = useRef(null);
   const bgImageInputRef = useRef(null);
+  const heroImageInputRef = useRef(null);
   const sequenceInputRef = useRef(null);
   const barRef = useRef(null);
   
@@ -1011,6 +1012,110 @@ function SectionActionBar({
                 step={5}
                 suffix="px"
               />
+            </div>
+          )}
+        </div>
+      </ActionGroup>
+
+      {/* Hero Image */}
+      <ActionGroup label="Hero Image" icon={FileImage} expanded={expanded.heroImage} onToggle={() => toggleExpand('heroImage')}>
+        <div className="space-y-3">
+          {/* Preview */}
+          {section.heroImage ? (
+            <div className="relative w-full h-24 bg-zinc-100 rounded-lg overflow-hidden">
+              <img 
+                src={section.heroImage} 
+                alt="Hero preview" 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-1 right-1 flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onUpdate({ heroImage: null })}
+                  className="h-6 w-6 p-0 bg-white/80 hover:bg-red-50 text-red-500"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-2">
+              <span className="text-[10px] text-zinc-500">Show Placeholder</span>
+              <input 
+                type="checkbox" 
+                checked={section.showHeroPlaceholder || false}
+                onChange={(e) => onUpdate({ showHeroPlaceholder: e.target.checked })}
+                className="w-4 h-4 rounded"
+              />
+            </div>
+          )}
+          
+          {/* Upload */}
+          <div className="space-y-2">
+            <input
+              type="file"
+              ref={heroImageInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => handleFileUpload(e, 'heroImage')}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => heroImageInputRef.current?.click()}
+              className="h-7 text-xs w-full"
+            >
+              <Upload className="w-3 h-3 mr-1.5" />
+              Upload Hero Image
+            </Button>
+            
+            {/* URL Input */}
+            <input
+              type="text"
+              placeholder="Or paste image URL..."
+              className="w-full h-7 px-2 text-xs rounded border border-zinc-200 focus:outline-none focus:border-[#04D1FC]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.target.value) {
+                  onUpdate({ heroImage: e.target.value });
+                  e.target.value = '';
+                }
+              }}
+              onBlur={(e) => {
+                if (e.target.value) {
+                  onUpdate({ heroImage: e.target.value });
+                  e.target.value = '';
+                }
+              }}
+            />
+          </div>
+          
+          {/* Size Controls */}
+          {(section.heroImage || section.showHeroPlaceholder) && (
+            <div className="space-y-2 pt-2 border-t border-zinc-100">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Height</span>
+                <NumberStepper
+                  value={section.heroImageHeight || 200}
+                  onChange={(v) => onUpdate({ heroImageHeight: v })}
+                  min={100}
+                  max={600}
+                  step={20}
+                  suffix="px"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Fit</span>
+                <select
+                  value={section.heroImageFit || 'cover'}
+                  onChange={(e) => onUpdate({ heroImageFit: e.target.value })}
+                  className="flex-1 h-7 px-2 text-xs rounded border border-zinc-200"
+                >
+                  <option value="cover">Cover</option>
+                  <option value="contain">Contain</option>
+                  <option value="fill">Fill</option>
+                </select>
+              </div>
             </div>
           )}
         </div>
@@ -3101,6 +3206,67 @@ function SectionActionBar({
             <span className="text-[10px] text-zinc-400 w-10">Text</span>
             <input type="color" value={section.tagColor || '#FFFFFF'} onChange={(e) => onUpdate({ tagColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
           </div>
+          {/* Tag Position */}
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Tag Position</span>
+            <select
+              value={section.tagPosition || 'sidebar-right'}
+              onChange={(e) => onUpdate({ tagPosition: e.target.value })}
+              className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            >
+              <option value="sidebar-right">Sidebar Right</option>
+              <option value="sidebar-left">Sidebar Left</option>
+              <option value="top-right">Top Right</option>
+              <option value="top-left">Top Left</option>
+              <option value="top-center">Top Center</option>
+            </select>
+          </div>
+          {/* Tag Height */}
+          <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
+            <span className="text-[10px] text-zinc-400 w-12">Height</span>
+            <div className="flex items-center gap-1 flex-1">
+              <button
+                onClick={() => onUpdate({ tagHeight: 'auto' })}
+                className={cn(
+                  "px-2 py-1 rounded text-[9px] font-medium transition-colors",
+                  section.tagHeight === 'auto' || !section.tagHeight
+                    ? "bg-zinc-900 text-white"
+                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                )}
+              >
+                Auto
+              </button>
+              {section.tagHeight !== 'auto' && section.tagHeight ? (
+                <NumberStepper
+                  value={section.tagHeight}
+                  onChange={(v) => onUpdate({ tagHeight: v })}
+                  min={40}
+                  max={400}
+                  step={10}
+                  suffix="px"
+                />
+              ) : (
+                <button
+                  onClick={() => onUpdate({ tagHeight: 100 })}
+                  className="px-2 py-1 rounded text-[9px] font-medium bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                >
+                  Set Height
+                </button>
+              )}
+            </div>
+          </div>
+          {/* Tag Gap */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Gap</span>
+            <NumberStepper
+              value={section.tagGap || 24}
+              onChange={(v) => onUpdate({ tagGap: v })}
+              min={0}
+              max={80}
+              step={4}
+              suffix="px"
+            />
+          </div>
         </div>
       </ActionGroup>
       
@@ -3116,35 +3282,49 @@ function SectionActionBar({
       
       <ActionGroup label="Accent Line" icon={Palette} expanded={expanded.accent} onToggle={() => toggleExpand('accent')}>
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-400 w-12">Position</span>
-            <div className="flex gap-1 flex-1">
-              <Button
-                variant={(section.accentPosition || 'right') === 'left' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onUpdate({ accentPosition: 'left' })}
-                className="flex-1 h-6 text-xs"
-              >
-                שמאל
-              </Button>
-              <Button
-                variant={(section.accentPosition || 'right') === 'right' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onUpdate({ accentPosition: 'right' })}
-                className="flex-1 h-6 text-xs"
-              >
-                ימין
-              </Button>
-            </div>
+          {/* Show Accent Bar Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-400">Show Accent Bar</span>
+            <input 
+              type="checkbox" 
+              checked={section.showAccentBar || false} 
+              onChange={(e) => onUpdate({ showAccentBar: e.target.checked })}
+              className="w-4 h-4 rounded"
+            />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-400 w-12">Color</span>
-            <input type="color" value={section.accentColor || '#FF6B6B'} onChange={(e) => onUpdate({ accentColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-400 w-12">Width</span>
-            <NumberStepper value={section.accentWidth || 4} onChange={(v) => onUpdate({ accentWidth: v })} min={2} max={12} suffix="px" />
-          </div>
+          {section.showAccentBar && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Position</span>
+                <div className="flex gap-1 flex-1">
+                  <Button
+                    variant={(section.accentPosition || 'right') === 'left' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => onUpdate({ accentPosition: 'left' })}
+                    className="flex-1 h-6 text-xs"
+                  >
+                    שמאל
+                  </Button>
+                  <Button
+                    variant={(section.accentPosition || 'right') === 'right' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => onUpdate({ accentPosition: 'right' })}
+                    className="flex-1 h-6 text-xs"
+                  >
+                    ימין
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Color</span>
+                <input type="color" value={section.accentColor || '#04D1FC'} onChange={(e) => onUpdate({ accentColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Width</span>
+                <NumberStepper value={section.accentWidth || 4} onChange={(v) => onUpdate({ accentWidth: v })} min={2} max={12} suffix="px" />
+              </div>
+            </>
+          )}
         </div>
       </ActionGroup>
       

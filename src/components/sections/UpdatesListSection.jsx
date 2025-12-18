@@ -6,6 +6,43 @@ const FONT_STACKS = {
   'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
 };
 
+// Icon components - minimalist SVG icons
+const IconBox = ({ color = '#5856D6', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" />
+  </svg>
+);
+
+const IconCreditCard = ({ color = '#5856D6', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+    <line x1="1" y1="10" x2="23" y2="10" />
+  </svg>
+);
+
+const IconPlay = ({ color = '#FF6B6B', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="5 3 19 12 5 21 5 3" fill={color} opacity="0.2" />
+    <polygon points="5 3 19 12 5 21 5 3" />
+  </svg>
+);
+
+// Generic placeholder icon
+const IconPlaceholder = ({ color = '#86868B', size = 24, bgColor = '#E5E5E5' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <rect x="3" y="3" width="18" height="18" rx="3" fill={bgColor} opacity="0.5" />
+    <path d="M8 17l3-4 2 2 3-4 4 6H4z" fill={color} opacity="0.6" />
+    <circle cx="8.5" cy="8.5" r="1.5" fill={color} opacity="0.6" />
+  </svg>
+);
+
+const ICON_MAP = {
+  'box': IconBox,
+  'credit-card': IconCreditCard,
+  'play': IconPlay,
+  'placeholder': IconPlaceholder,
+};
+
 function UpdatesListSection({
   title = 'מה עוד חדש?',
   headerLinkText = 'כל העדכונים',
@@ -14,7 +51,7 @@ function UpdatesListSection({
     {
       iconBg: '#E8E0FF',
       iconColor: '#5856D6',
-      icon: '📦',
+      iconType: 'box',
       title: 'מוצרים לפי דרישה',
       description: 'לקוחות יכולים ליצור מיידית קולקציית מוצרים שלמה שמתאימה למותג שלהם.',
       linkText: 'למד עוד',
@@ -23,7 +60,7 @@ function UpdatesListSection({
     {
       iconBg: '#E0E8FF',
       iconColor: '#5856D6',
-      icon: '💳',
+      iconType: 'credit-card',
       title: 'קישורי תשלום אוטומטיים',
       description: 'אפשר קישורי תשלום אוטומטיים כדי שמבקרים יוכלו לשלם ישירות מהמייל.',
       linkText: 'למד עוד',
@@ -32,7 +69,7 @@ function UpdatesListSection({
     {
       iconBg: '#FFE8E0',
       iconColor: '#FF6B6B',
-      icon: '▶️',
+      iconType: 'play',
       title: 'השקת מוצר ביוטיוב',
       description: 'מוכרים יכולים כעת להגדיר תאריך פרסום למוצרים ביוטיוב.',
       linkText: 'למד עוד',
@@ -139,7 +176,6 @@ function UpdatesListSection({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: `${iconSize * 0.4}px`,
     flexShrink: 0,
   });
 
@@ -185,6 +221,11 @@ function UpdatesListSection({
     onBlur: () => handleBlur(field),
   });
 
+  const renderIcon = (item) => {
+    const IconComponent = ICON_MAP[item.iconType] || IconPlaceholder;
+    return <IconComponent color={item.iconColor || '#5856D6'} size={iconSize * 0.5} />;
+  };
+
   return (
     <div style={containerStyle}>
       <div style={headerStyle}>
@@ -220,7 +261,7 @@ function UpdatesListSection({
             }}
           >
             <div style={iconContainerStyle(item.iconBg)}>
-              {item.icon}
+              {renderIcon(item)}
             </div>
             <div style={itemContentStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: textDirection === 'rtl' ? 'row-reverse' : 'row' }}>

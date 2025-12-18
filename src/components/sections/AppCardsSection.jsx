@@ -6,31 +6,88 @@ const FONT_STACKS = {
   'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
 };
 
+// Icon components - minimalist SVG icons
+const IconCart = ({ color = '#22C55E', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="21" r="1" />
+    <circle cx="20" cy="21" r="1" />
+    <path d="m1 1 4 4h16l-3 9H7L3 3" />
+  </svg>
+);
+
+const IconImage = ({ color = '#5856D6', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
+const IconReturn = ({ color = '#EC4899', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6 2.3L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
+const IconStar = ({ color = '#F59E0B', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} fillOpacity="0.2" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
+const IconSettings = ({ color = '#6366F1', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+);
+
+// Generic placeholder icon
+const IconPlaceholder = ({ color = '#86868B', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 9h6v6H9z" />
+  </svg>
+);
+
+const ICON_MAP = {
+  'cart': IconCart,
+  'image': IconImage,
+  'return': IconReturn,
+  'star': IconStar,
+  'settings': IconSettings,
+  'placeholder': IconPlaceholder,
+};
+
 function AppCardsSection({
   title = 'אפליקציות ואינטגרציות חדשות',
   cards = [
     {
-      icon: '🛒',
+      iconType: 'cart',
       iconBg: '#E8FFE8',
-      name: 'שם האפליקציה',
+      iconColor: '#22C55E',
+      name: 'הזמנות חכמות',
       underlineColor: '#FF6B6B',
       description: 'לקוחות יכולים להגדיר כללי כמות למוצרים ספציפיים או לקולקציות שלמות.',
       linkText: 'בדוק את זה',
       linkUrl: '#'
     },
     {
-      icon: '🖼️',
+      iconType: 'image',
       iconBg: '#E8E0FF',
-      name: 'תמונות AI',
+      iconColor: '#5856D6',
+      name: 'תמונות מוצר AI',
       underlineColor: '#5856D6',
       description: 'השתמש ב-AI כדי למקם מוצרים על כל רקע וליצור תמונות סטודיו.',
       linkText: 'בדוק את זה',
       linkUrl: '#'
     },
     {
-      icon: '↩️',
+      iconType: 'return',
       iconBg: '#FFE8F0',
-      name: 'החזרות',
+      iconColor: '#EC4899',
+      name: 'ניהול החזרות',
       underlineColor: '#5856D6',
       description: 'הפוך את תהליך ההחזרה לקל ללקוחות עם דשבורד אחד.',
       linkText: 'בדוק את זה',
@@ -127,7 +184,6 @@ function AppCardsSection({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: `${iconSize * 0.5}px`,
     marginBottom: '12px',
   });
 
@@ -180,6 +236,11 @@ function AppCardsSection({
     onBlur: () => handleBlur(field),
   });
 
+  const renderIcon = (card) => {
+    const IconComponent = ICON_MAP[card.iconType] || IconPlaceholder;
+    return <IconComponent color={card.iconColor || '#5856D6'} size={iconSize * 0.5} />;
+  };
+
   return (
     <div style={containerStyle}>
       {title && (
@@ -198,7 +259,7 @@ function AppCardsSection({
         {cards.map((card, index) => (
           <div key={index} style={cardStyle}>
             <div style={iconContainerStyle(card.iconBg)}>
-              {card.icon}
+              {renderIcon(card)}
             </div>
             <div style={nameContainerStyle}>
               <p 

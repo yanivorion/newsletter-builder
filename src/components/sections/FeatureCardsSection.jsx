@@ -209,17 +209,17 @@ function FeatureCardsSection({
               >
                 {card.description}
               </p>
-              <a 
+                <a 
                 {...editableProps(`card-${index}-linkText`)}
-                style={{
+                  style={{
                   ...linkStyle,
                   outline: editingField === `card-${index}-linkText` ? '2px dashed #04D1FC' : 'none',
-                }}
+                  }}
                 href={editingField ? undefined : card.linkUrl}
-              >
+                >
                 {card.linkText}
                 <span style={{ fontSize: '14px' }}>→</span>
-              </a>
+                </a>
             </div>
           </div>
         ))}
@@ -227,15 +227,15 @@ function FeatureCardsSection({
       
       {isSelected && !editingField && onTextChange && (
         <div style={{
-          position: 'absolute',
-          bottom: '8px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontSize: '10px',
-          color: 'rgba(0,0,0,0.4)',
-          backgroundColor: 'rgba(255,255,255,0.8)',
-          padding: '2px 8px',
-          borderRadius: '4px',
+            position: 'absolute',
+            bottom: '8px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: '10px',
+            color: 'rgba(0,0,0,0.4)',
+            backgroundColor: 'rgba(255,255,255,0.8)',
+            padding: '2px 8px',
+            borderRadius: '4px',
         }}>
           Double-click to edit
         </div>

@@ -304,7 +304,7 @@ function exportImageCollage(section) {
 
   let imageCells = '';
   const validImages = images.filter(img => img);
-  
+    
   for (let i = 0; i < validImages.length; i++) {
     const img = validImages[i];
     const isLastInRow = (i + 1) % columnsCount === 0;

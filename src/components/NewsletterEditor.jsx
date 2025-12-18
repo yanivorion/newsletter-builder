@@ -328,7 +328,7 @@ function NewsletterEditor({
 
     return (
       <div 
-        key={section.id}
+        key={section.id} 
         ref={sectionRef}
         data-section-id={section.id}
         draggable={isUnlocked}

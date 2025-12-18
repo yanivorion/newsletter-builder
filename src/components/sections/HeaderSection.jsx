@@ -274,13 +274,13 @@ function HeaderSection({
       <div style={{ position: 'relative', zIndex: 2 }}>
       {/* Top Padding Handle - only show if there's any content */}
       {hasAnyContent && (
-        <InlineSpacerHandle
-          value={paddingTop}
-          onChange={(v) => handleSpacingChange('paddingTop', v)}
-          min={8}
-          max={120}
-          isEditing={isEditing}
-        />
+      <InlineSpacerHandle
+        value={paddingTop}
+        onChange={(v) => handleSpacingChange('paddingTop', v)}
+        min={8}
+        max={120}
+        isEditing={isEditing}
+      />
       )}
 
       {logo && (
@@ -371,13 +371,13 @@ function HeaderSection({
 
       {/* Bottom Padding Handle - only show if there's any content */}
       {hasAnyContent && (
-        <InlineSpacerHandle
-          value={paddingBottom}
-          onChange={(v) => handleSpacingChange('paddingBottom', v)}
-          min={8}
-          max={120}
-          isEditing={isEditing}
-        />
+      <InlineSpacerHandle
+        value={paddingBottom}
+        onChange={(v) => handleSpacingChange('paddingBottom', v)}
+        min={8}
+        max={120}
+        isEditing={isEditing}
+      />
       )}
 
       {showDateBadge && dateBadgeText && (

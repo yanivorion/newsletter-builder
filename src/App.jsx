@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save, Plus, Minus, LogIn } from 'lucide-react';
+import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save, Plus, Minus, LogIn, FolderOpen } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
 import { useAuth } from './context/AuthContext';
 import TemplateSelector from './components/TemplateSelector';
+import ProjectsDashboard from './components/ProjectsDashboard';
 import WorkspaceCanvas from './components/WorkspaceCanvas';
 import FloatingToolbar from './components/FloatingToolbar';
 import FloatingThemeBar from './components/FloatingThemeBar';
@@ -59,10 +60,306 @@ const blankTemplate = {
   ]
 };
 
+// ElectroNews Template - Company Newsletter Structure
+const electroNewsTemplate = {
+  name: 'ElectroNews',
+  sections: [
+    // 1. Header with blue gradient, logo and hero image
+    { 
+      id: 'header-1', 
+      type: 'header', 
+      backgroundColor: '#60A5FA', 
+      gradientEnd: '#1D4ED8', 
+      logo: null, 
+      logoWidth: 100,
+      logoHeight: 'auto',
+      logoAlignment: 'left',
+      heroImage: null,
+      heroImageHeight: 200,
+      heroImageFit: 'cover',
+      showHeroPlaceholder: true,
+      title: 'ElectroNews', 
+      titleFontSize: 56,
+      titleFontWeight: '700',
+      titleFontStyle: 'italic',
+      titleLetterSpacing: '0',
+      titleLineHeight: 1.1,
+      subtitle: '', 
+      subtitleFontSize: 16,
+      subtitleFontWeight: '400',
+      subtitleLetterSpacing: '0',
+      subtitleLineHeight: 1.4,
+      textColor: '#1E3A8A',
+      showDateBadge: true,
+      dateBadgeText: 'JULY 2025',
+      dateBadgeBg: '#67E8F9',
+      dateBadgeColor: '#000000',
+      paddingTop: 20,
+      paddingBottom: 20,
+      paddingHorizontal: 24,
+      spacingLogoToHero: 16,
+      spacingHeroToTitle: 0,
+      spacingTitleToSubtitle: 8
+    },
+    // 2. Opening words with tag (מילות פתיחה)
+    {
+      id: 'accent-opening',
+      type: 'accentText',
+      tag: 'מילות פתיחה',
+      tagBg: '#04D1FC',
+      tagColor: '#FFFFFF',
+      tagPosition: 'sidebar-right',
+      content: 'החודש ציינו את יום הטבעונות הבינלאומי עם ארוחת חומוס טעימה במיוחד, הזדמנות נהדרת להתכנס יחד, לטעום, ליהנות ולחוות את האוכל טבעוני.\n\nכמובן שגם חגגנו ימי הולדת לילידי נובמבר, הייתה אווירה חמימה ומשמחת. כמו תמיד היה כיף לראות את כולם מתאחדים כדי לחגוג יחד.\n\nבנוסף, שמחנו לארח אצלנו אורחים מחברת IEV, שהגיעו לביקור מקצועי ומעשיר.\nהיה מרתק להכיר, לשתף, ולהציג בפניהם את העשייה שלנו מקרוב.',
+      accentColor: '#04D1FC',
+      showAccentBar: false,
+      accentPosition: 'right',
+      accentWidth: 4,
+      backgroundColor: '#FFFFFF',
+      textColor: '#1D1D1F',
+      fontFamily: 'Noto Sans Hebrew',
+      fontSize: 16,
+      fontWeight: '400',
+      lineHeight: 1.7,
+      paddingVertical: 40,
+      paddingHorizontal: 40,
+      textAlign: 'right',
+      textDirection: 'rtl'
+    },
+    // 3. Section Header - Happy Birthday
+    {
+      id: 'section-birthday',
+      type: 'sectionHeader',
+      text: 'HAPPY BIRTHDAY',
+      backgroundColor: '#FACC15',
+      color: '#000000',
+      fontSize: 18,
+      fontWeight: 700,
+      letterSpacing: '0.1em',
+      padding: 12,
+      textDirection: 'ltr',
+      textAlign: 'center'
+    },
+    // 4. Birthday Celebration Content
+    {
+      id: 'celebration-1',
+      type: 'accentText',
+      tag: 'ילידי החודש',
+      tagBg: '#04D1FC',
+      tagColor: '#FFFFFF',
+      tagPosition: 'sidebar-right',
+      content: 'שם ראשון, שם שני, שם שלישי,\nשם רביעי, שם חמישי ושם שישי...\nמזל טוב! מי ייתן וכל משאלות ליבכם יתגשמו :)',
+      accentColor: '#FF6B6B',
+      showAccentBar: true,
+      accentPosition: 'right',
+      accentWidth: 4,
+      backgroundColor: '#FFFFFF',
+      textColor: '#333333',
+      fontFamily: 'Noto Sans Hebrew',
+      fontSize: 18,
+      fontWeight: '400',
+      lineHeight: 1.6,
+      paddingVertical: 32,
+      paddingHorizontal: 24,
+      textAlign: 'right',
+      textDirection: 'rtl'
+    },
+    // 5. Section Header - Special Event
+    {
+      id: 'section-event',
+      type: 'sectionHeader',
+      text: 'INTERNATIONAL VEGAN DAY 11/2',
+      backgroundColor: '#22C55E',
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: 700,
+      letterSpacing: '0.05em',
+      padding: 12,
+      textDirection: 'ltr',
+      textAlign: 'center'
+    },
+    // 6. Event content
+    {
+      id: 'text-event',
+      type: 'text',
+      content: 'יום הטבעונות הבינלאומי 2.11\n\nהשנה אנחנו מציינים את יום הטבעונות הבינלאומי עם מגוון פעילויות מיוחדות. הצטרפו אלינו לסדנאות בישול, הרצאות והטעמות.',
+      textAlign: 'right',
+      textDirection: 'rtl',
+      fontFamily: 'Noto Sans Hebrew',
+      fontSize: 16,
+      color: '#1D1D1F',
+      backgroundColor: '#F0FDF4',
+      padding: 32
+    },
+    // 7. Image collage for event
+    {
+      id: 'collage-event',
+      type: 'imageCollage',
+      layout: '2-column',
+      images: [],
+      gap: 8,
+      imageHeight: 200,
+      backgroundColor: '#FFFFFF'
+    },
+    // 8. Section Header - Special Guests
+    {
+      id: 'section-guests',
+      type: 'sectionHeader',
+      text: 'SPECIAL GUESTS',
+      backgroundColor: '#8B5CF6',
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: 700,
+      letterSpacing: '0.1em',
+      padding: 12,
+      textDirection: 'ltr',
+      textAlign: 'center'
+    },
+    // 9. Guest visit content with image
+    {
+      id: 'collage-guests',
+      type: 'imageCollage',
+      layout: '3-column',
+      images: [],
+      gap: 8,
+      imageHeight: 180,
+      backgroundColor: '#FFFFFF'
+    },
+    // 10. Visit details text
+    {
+      id: 'text-visit',
+      type: 'text',
+      content: 'IEV Visit\n\nהשבוע ארחנו משלחת מיוחדת של אורחים בינלאומיים. הביקור כלל סיור במתקנים, פגישות עם הצוות והצגת הפרויקטים האחרונים שלנו.',
+      textAlign: 'right',
+      textDirection: 'rtl',
+      fontFamily: 'Noto Sans Hebrew',
+      fontSize: 16,
+      color: '#1D1D1F',
+      backgroundColor: '#FFFFFF',
+      padding: 32
+    },
+    // 11. Section Header - Celebrating Work Anniversary
+    {
+      id: 'section-anniversary',
+      type: 'sectionHeader',
+      text: 'CELEBRATING ELECTRILEDET',
+      backgroundColor: '#0284C7',
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: 700,
+      letterSpacing: '0.1em',
+      padding: 12,
+      textDirection: 'ltr',
+      textAlign: 'center'
+    },
+    // 12. Work anniversary profiles (4 columns)
+    {
+      id: 'profiles-anniversary',
+      type: 'profileCards',
+      profiles: [
+        { name: 'שם עובד', title: '4 שנים', image: '' },
+        { name: 'שם עובד', title: '4 שנים', image: '' },
+        { name: 'שם עובד', title: '4 שנים', image: '' },
+        { name: 'שם עובד', title: '4 שנים', image: '' }
+      ],
+      columns: 4,
+      imageShape: 'circular',
+      backgroundColor: '#F0F9FF',
+      showName: true,
+      showTitle: true,
+      textDirection: 'rtl',
+      textAlign: 'center'
+    },
+    // 13. Section Header - New Team Members
+    {
+      id: 'section-newplayers',
+      type: 'sectionHeader',
+      text: 'SAY HELLO TO OUR NEW PLAYERS!',
+      backgroundColor: '#22C55E',
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: 700,
+      letterSpacing: '0.05em',
+      padding: 12,
+      textDirection: 'ltr',
+      textAlign: 'center'
+    },
+    // 14. New team members profiles (2 columns)
+    {
+      id: 'profiles-new',
+      type: 'profileCards',
+      profiles: [
+        { name: 'שם עובד חדש', title: 'תפקיד', image: '' },
+        { name: 'שם עובד חדש', title: 'תפקיד', image: '' }
+      ],
+      columns: 2,
+      imageShape: 'circular',
+      backgroundColor: '#F0FDF4',
+      showName: true,
+      showTitle: true,
+      textDirection: 'rtl',
+      textAlign: 'center'
+    },
+    // 15. Section Header - Recipe
+    {
+      id: 'section-recipe',
+      type: 'sectionHeader',
+      text: 'THIS MONTH\'S RECIPE CORNER',
+      backgroundColor: '#F97316',
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: 700,
+      letterSpacing: '0.05em',
+      padding: 12,
+      textDirection: 'ltr',
+      textAlign: 'center'
+    },
+    // 16. Recipe section
+    {
+      id: 'recipe-1',
+      type: 'recipe',
+      title: 'שם המתכון',
+      image: null,
+      ingredients: 'רכיב 1\nרכיב 2\nרכיב 3\nרכיב 4\nרכיב 5',
+      instructions: 'שלב 1: הכנת החומרים\nשלב 2: ערבוב\nשלב 3: בישול\nשלב 4: הגשה',
+      backgroundColor: '#FFF7ED',
+      textDirection: 'rtl',
+      textAlign: 'right'
+    },
+    // 17. Additional text content
+    {
+      id: 'text-closing',
+      type: 'text',
+      content: 'תודה שקראתם את הניוזלטר שלנו!\n\nנתראה בגיליון הבא עם עוד חדשות ועדכונים מרתקים. אם יש לכם נושאים שתרצו שנכסה או רעיונות לשיפור, אנא שתפו אותנו.',
+      textAlign: 'right',
+      textDirection: 'rtl',
+      fontFamily: 'Noto Sans Hebrew',
+      fontSize: 16,
+      color: '#1D1D1F',
+      backgroundColor: '#FFFFFF',
+      padding: 32
+    },
+    // 18. Footer
+    {
+      id: 'footer-1',
+      type: 'footer',
+      backgroundColor: '#0284C7',
+      gradientEnd: '#0369A1',
+      text: 'Electron\nכתובת החברה\nפרטי התקשרות',
+      color: '#FFFFFF',
+      fontSize: 14,
+      padding: 30,
+      textDirection: 'rtl',
+      textAlign: 'center'
+    }
+  ]
+};
+
 const WORKSPACE_STORAGE_KEY = 'newsletter-workspace-v2';
+const PROJECTS_STORAGE_KEY = 'newsletter-projects-v1';
 
 function AppContent() {
   const [showLanding, setShowLanding] = useState(true);
+  const [showProjectsDashboard, setShowProjectsDashboard] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -72,6 +369,8 @@ function AppContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [currentDbNewsletterId, setCurrentDbNewsletterId] = useState(null);
+  const [savedProjects, setSavedProjects] = useState([]);
+  const [currentProjectId, setCurrentProjectId] = useState(null);
 
   // Auth state
   const { user, isAuthenticated, loading: authLoading, isConfigured: supabaseConfigured } = useAuth();
@@ -89,7 +388,20 @@ function AppContent() {
   // Use workspace hook for multi-newsletter management (local state)
   const workspace = useWorkspace();
 
-  // Load saved workspace on mount
+  // Load saved projects on mount
+  useEffect(() => {
+    try {
+      const projects = localStorage.getItem(PROJECTS_STORAGE_KEY);
+      if (projects) {
+        const parsed = JSON.parse(projects);
+        setSavedProjects(parsed);
+      }
+    } catch (e) {
+      console.error('Failed to load projects:', e);
+    }
+  }, []);
+
+  // Load saved workspace on mount (for backward compatibility)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(WORKSPACE_STORAGE_KEY);
@@ -97,7 +409,7 @@ function AppContent() {
         const parsed = JSON.parse(saved);
         if (parsed.newsletters && parsed.newsletters.length > 0) {
           workspace.loadState(parsed);
-          setShowLanding(false);
+          // Don't auto-open, let user choose from landing
         }
       }
     } catch (e) {
@@ -164,8 +476,17 @@ function AppContent() {
   }, [workspace, showLanding]);
 
   const handleStart = useCallback(() => {
+    setCurrentProjectId(null); // Reset project ID for new project
     workspace.addNewsletter(blankTemplate);
     setShowLanding(false);
+    setShowProjectsDashboard(false);
+  }, [workspace]);
+
+  const handleStartCompanyTemplate = useCallback(() => {
+    setCurrentProjectId(null);
+    workspace.addNewsletter(electroNewsTemplate);
+    setShowLanding(false);
+    setShowProjectsDashboard(false);
   }, [workspace]);
 
   const handleContinueEditing = useCallback(() => {
@@ -343,9 +664,122 @@ function AppContent() {
     }
   };
 
+  // Save current workspace as a project
+  const saveCurrentAsProject = useCallback(() => {
+    if (!workspace.activeNewsletter) return;
+    
+    const now = new Date().toISOString();
+    const projectData = {
+      id: currentProjectId || `project-${Date.now()}`,
+      name: workspace.activeNewsletter.name || 'Untitled Newsletter',
+      sections: workspace.activeNewsletter.sections || [],
+      createdAt: currentProjectId ? savedProjects.find(p => p.id === currentProjectId)?.createdAt : now,
+      updatedAt: now
+    };
+    
+    setSavedProjects(prev => {
+      const existing = prev.findIndex(p => p.id === projectData.id);
+      let updated;
+      if (existing >= 0) {
+        updated = [...prev];
+        updated[existing] = projectData;
+      } else {
+        updated = [projectData, ...prev];
+      }
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    
+    if (!currentProjectId) {
+      setCurrentProjectId(projectData.id);
+    }
+    
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  }, [workspace.activeNewsletter, currentProjectId, savedProjects]);
+
+  // Load a project into the workspace
+  const loadProject = useCallback((project) => {
+    const newsletterData = {
+      id: `newsletter-${Date.now()}`,
+      name: project.name,
+      sections: project.sections || [],
+      position: { x: 100, y: 100 }
+    };
+    
+    workspace.loadState({
+      newsletters: [newsletterData],
+      activeNewsletterId: newsletterData.id,
+      zoom: 1
+    });
+    
+    setCurrentProjectId(project.id);
+    setShowProjectsDashboard(false);
+    setShowLanding(false);
+  }, [workspace]);
+
+  // Delete a project
+  const deleteProject = useCallback((projectId) => {
+    if (confirm('Are you sure you want to delete this project?')) {
+      setSavedProjects(prev => {
+        const updated = prev.filter(p => p.id !== projectId);
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      
+      if (currentProjectId === projectId) {
+        setCurrentProjectId(null);
+      }
+    }
+  }, [currentProjectId]);
+
+  // Duplicate a project
+  const duplicateProject = useCallback((projectId) => {
+    const project = savedProjects.find(p => p.id === projectId);
+    if (!project) return;
+    
+    const now = new Date().toISOString();
+    const newProject = {
+      ...project,
+      id: `project-${Date.now()}`,
+      name: `${project.name} (Copy)`,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    setSavedProjects(prev => {
+      const updated = [newProject, ...prev];
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [savedProjects]);
+
+  // Rename a project
+  const renameProject = useCallback((projectId, newName) => {
+    setSavedProjects(prev => {
+      const updated = prev.map(p => 
+        p.id === projectId 
+          ? { ...p, name: newName, updatedAt: new Date().toISOString() }
+          : p
+      );
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    
+    // Also update workspace if this is the current project
+    if (currentProjectId === projectId && workspace.activeNewsletterId) {
+      workspace.renameNewsletter(workspace.activeNewsletterId, newName);
+    }
+  }, [currentProjectId, workspace]);
+
   const handleBackToLanding = useCallback(() => {
+    // Auto-save current project before going back
+    if (workspace.activeNewsletter && currentProjectId) {
+      saveCurrentAsProject();
+    }
     setShowLanding(true);
-  }, []);
+    setShowProjectsDashboard(false);
+  }, [workspace.activeNewsletter, currentProjectId, saveCurrentAsProject]);
 
   const handleStartFresh = useCallback(() => {
     localStorage.removeItem(WORKSPACE_STORAGE_KEY);
@@ -366,15 +800,41 @@ function AppContent() {
     );
   }
 
+  // Show projects dashboard
+  if (showProjectsDashboard) {
+    return (
+      <ProjectsDashboard
+        projects={savedProjects}
+        onSelectProject={loadProject}
+        onCreateNew={() => {
+          setCurrentProjectId(null);
+          handleStart();
+          setShowProjectsDashboard(false);
+        }}
+        onDeleteProject={deleteProject}
+        onDuplicateProject={duplicateProject}
+        onRenameProject={renameProject}
+        onBack={() => {
+          setShowProjectsDashboard(false);
+          setShowLanding(true);
+        }}
+      />
+    );
+  }
+
   if (showLanding) {
     return (
       <TemplateSelector 
         onSelectTemplate={handleStart}
+        onSelectCompanyTemplate={handleStartCompanyTemplate}
         hasSavedNewsletter={workspace.newsletters.length > 0}
         onContinueEditing={handleContinueEditing}
         onShowAuth={() => setShowAuth(true)}
         isAuthenticated={isAuthenticated}
         user={user}
+        savedProjects={savedProjects}
+        onViewAllProjects={() => setShowProjectsDashboard(true)}
+        onSelectProject={loadProject}
       />
     );
   }
@@ -477,31 +937,59 @@ function AppContent() {
         <div className="flex items-center gap-2">
           {workspace.activeNewsletter && (
             <>
+              {/* Save Project Button (Local) */}
+              <Button 
+                onClick={saveCurrentAsProject} 
+                size="sm"
+                variant={saveSuccess ? "default" : "outline"}
+                className={cn(
+                  saveSuccess && "bg-emerald-600 hover:bg-emerald-600 border-emerald-600"
+                )}
+              >
+                {saveSuccess ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save
+                  </>
+                )}
+              </Button>
+              
+              {/* My Projects Button */}
+              <Button 
+                onClick={() => {
+                  saveCurrentAsProject();
+                  setShowProjectsDashboard(true);
+                  setShowLanding(false);
+                }} 
+                size="sm"
+                variant="outline"
+              >
+                <FolderOpen className="w-4 h-4" />
+                Projects
+              </Button>
+              
               {/* Save to Cloud button - only when authenticated */}
               {isAuthenticated && (
                 <Button 
                   onClick={handleSaveToCloud} 
                   size="sm"
-                  variant={saveSuccess ? "default" : "outline"}
+                  variant="outline"
                   disabled={isSaving}
-                  className={cn(
-                    saveSuccess && "bg-emerald-600 hover:bg-emerald-600 border-emerald-600"
-                  )}
                 >
                   {isSaving ? (
                     <>
                       <Save className="w-4 h-4 animate-pulse" />
-                      Saving...
-                    </>
-                  ) : saveSuccess ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Saved!
+                      Syncing...
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      Save
+                      Sync to Cloud
                     </>
                   )}
                 </Button>
@@ -943,11 +1431,13 @@ function getDefaultSectionData(sectionType) {
       textAlign: 'right'
     },
     accentText: {
-      tag: 'ילידי נובמבר',
+      tag: 'מילות פתיחה',
       tagBg: '#04D1FC',
       tagColor: '#FFFFFF',
-      content: 'אולג יודקביץ, אלדר בלנק, אסטבן ספולבדה אוליבה,\nדור הופמן, דין מרקוס, יניב אליהו ורועי גלבוע...\nמזל טוב! מי ייתן וכל משאלות ליבכם יתגשמו:)',
-      accentColor: '#FF6B6B',
+      tagPosition: 'sidebar-right',
+      content: 'החודש ציינו את יום הטבעונות הבינלאומי עם ארוחת חומוס טעימה במיוחד, הזדמנות נהדרת להתכנס יחד, לטעום, ליהנות ולחוות את האוכל טבעוני.\n\nכמובן שגם חגגנו ימי הולדת לילידי נובמבר, הייתה אווירה חמימה ומשמחת. כמו תמיד היה כיף לראות את כולם מתאחדים כדי לחגוג יחד.',
+      accentColor: '#04D1FC',
+      showAccentBar: false,
       accentPosition: 'right',
       accentWidth: 4,
       backgroundColor: '#FFFFFF',
@@ -955,7 +1445,7 @@ function getDefaultSectionData(sectionType) {
       fontFamily: 'Noto Sans Hebrew',
       fontSize: 16,
       fontWeight: '400',
-      lineHeight: 1.6,
+      lineHeight: 1.7,
       paddingVertical: 32,
       paddingHorizontal: 24,
       textAlign: 'right',
@@ -1007,28 +1497,31 @@ function getDefaultSectionData(sectionType) {
       headerCtaUrl: '#',
       items: [
         {
-          icon: '📦',
+          iconType: 'box',
           iconBg: '#E8E0FF',
+          iconColor: '#5856D6',
           title: 'מוצרים בהזמנה אישית',
           description: 'לקוחות יכולים ליצור קולקציה שלמה של מוצרים בהתאמה למותג שלהם ללא צורך בעיצוב ידני.',
-          cta: 'למידע נוסף',
-          ctaUrl: '#'
+          linkText: 'למידע נוסף',
+          linkUrl: '#'
         },
         {
-          icon: '💳',
+          iconType: 'credit-card',
           iconBg: '#E0E8FF',
+          iconColor: '#5856D6',
           title: 'קישורי תשלום אוטומטיים',
           description: 'אפשרו קישורי תשלום אוטומטיים כדי שמבקרים יוכלו לשלם ישירות מהודעות אישור.',
-          cta: 'למידע נוסף',
-          ctaUrl: '#'
+          linkText: 'למידע נוסף',
+          linkUrl: '#'
         },
         {
-          icon: '🎬',
+          iconType: 'play',
           iconBg: '#FFE8E0',
+          iconColor: '#FF6B6B',
           title: 'השקת מוצרים ביוטיוב',
           description: 'מוכרים יכולים כעת לקבוע תאריך פרסום למוצרים ביוטיוב וליצור באזז לפני ההשקה.',
-          cta: 'למידע נוסף',
-          ctaUrl: '#'
+          linkText: 'למידע נוסף',
+          linkUrl: '#'
         }
       ],
       backgroundColor: '#F5F5F7',
@@ -1053,31 +1546,34 @@ function getDefaultSectionData(sectionType) {
       title: 'אפליקציות ואינטגרציות חדשות',
       cards: [
         {
-          icon: '🛒',
+          iconType: 'cart',
           iconBg: '#E8FFE8',
+          iconColor: '#22C55E',
           name: 'הזמנות חכמות',
-          accentColor: '#FF6B6B',
+          underlineColor: '#FF6B6B',
           description: 'לקוחות יכולים להגדיר כללי כמות למוצרים או קולקציות שלמות כדי למנוע בעיות מלאי.',
-          cta: 'לבדיקה',
-          ctaUrl: '#'
+          linkText: 'לבדיקה',
+          linkUrl: '#'
         },
         {
-          icon: '🖼️',
+          iconType: 'image',
           iconBg: '#E0E8FF',
+          iconColor: '#5856D6',
           name: 'תמונות מוצר AI',
-          accentColor: '#5856D6',
+          underlineColor: '#5856D6',
           description: 'השתמשו ב-AI כדי למקם מוצרים על כל רקע וליצור תמונות מקצועיות בשניות.',
-          cta: 'לבדיקה',
-          ctaUrl: '#'
+          linkText: 'לבדיקה',
+          linkUrl: '#'
         },
         {
-          icon: '↩️',
+          iconType: 'return',
           iconBg: '#FFE8F0',
+          iconColor: '#EC4899',
           name: 'ניהול החזרות',
-          accentColor: '#7B5CF0',
+          underlineColor: '#7B5CF0',
           description: 'הפכו את תהליך ההחזרות לקל ללקוחות עם מדיניות מותאמת אישית.',
-          cta: 'לבדיקה',
-          ctaUrl: '#'
+          linkText: 'לבדיקה',
+          linkUrl: '#'
         }
       ],
       columns: 3,

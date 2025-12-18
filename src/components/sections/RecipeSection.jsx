@@ -128,36 +128,36 @@ function RecipeSection({
         {hasTitle && <h2 style={titleStyle}>{title}</h2>}
         
         {(hasImage || isSelected) && (
-          <div style={imageContainerStyle}>
-            {image ? (
-              <img 
-                src={image} 
-                alt={title} 
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
+        <div style={imageContainerStyle}>
+          {image ? (
+            <img 
+              src={image} 
+              alt={title} 
+              style={{ 
+                width: '100%', 
+                height: '100%', 
                   objectFit: imageFit 
-                }} 
-              />
+              }} 
+            />
             ) : isSelected ? (
               <div style={placeholderStyle}>
                 <ImageIcon size={48} strokeWidth={1} />
                 <span style={{ marginTop: '8px', fontSize: '14px' }}>Click to add recipe image</span>
               </div>
             ) : null}
-          </div>
-        )}
+            </div>
+          )}
 
         {hasIngredients && (
           <div style={{ ...textBlockStyle, marginBottom: hasContentAfterIngredients ? '15px' : 0 }}>
             {ingredients}
-          </div>
+        </div>
         )}
 
         {hasInstructions && (
           <div style={{ ...textBlockStyle, marginBottom: 0 }}>
             {instructions}
-          </div>
+        </div>
         )}
       </div>
     </div>

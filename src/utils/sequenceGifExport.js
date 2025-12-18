@@ -45,7 +45,7 @@ export async function exportSequenceAsGif(images, options = {}) {
   if (onProgress) onProgress(30);
 
   const gif = GIFEncoder();
-
+  
   for (let i = 0; i < validImages.length; i++) {
     const img = validImages[i];
     
@@ -76,12 +76,12 @@ export async function exportSequenceAsGif(images, options = {}) {
     const index = applyPalette(rgba, palette);
     
     gif.writeFrame(index, width, height, { palette, delay, dispose: 1 });
-    
+          
     if (onProgress) onProgress(30 + Math.round((i / validImages.length) * 60));
-  }
+        }
 
   gif.finish();
-  if (onProgress) onProgress(100);
+          if (onProgress) onProgress(100);
 
   const buffer = gif.bytes();
   const blob = new Blob([buffer], { type: 'image/gif' });

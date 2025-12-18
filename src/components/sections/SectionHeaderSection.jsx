@@ -135,7 +135,7 @@ function SectionHeaderSection({
         onDoubleClick={handleDoubleClick}
         onBlur={handleBlur}
       >
-        {text || 'SECTION TITLE'}
+      {text || 'SECTION TITLE'}
       </div>
       {/* Edit hint */}
       {isSelected && !isEditing && onContentChange && (
