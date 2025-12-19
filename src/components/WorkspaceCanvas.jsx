@@ -111,10 +111,10 @@ function WorkspaceCanvas({
       setPanOffset({ x: newPanX, y: newPanY });
       if (onSetZoom) onSetZoom(newZoom);
     } else {
-      // Pan with scroll wheel (also smooth it a bit)
+      // Pan with scroll wheel
       setPanOffset(prev => ({
-        x: prev.x - e.deltaX * 0.8,
-        y: prev.y - e.deltaY * 0.8
+        x: prev.x - e.deltaX,
+        y: prev.y - e.deltaY
       }));
     }
   }, [zoom, panOffset, onSetZoom]);
