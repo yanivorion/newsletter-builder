@@ -71,6 +71,8 @@
 
 html {
   font-family: var(--font-sans);
+  /* Prevent browser back/forward on horizontal overscroll */
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -80,6 +82,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
   line-height: 1.5;
+  /* Prevent browser back/forward on horizontal overscroll */
+  overscroll-behavior-x: none;
 }
 
 /* Smooth scrolling */
