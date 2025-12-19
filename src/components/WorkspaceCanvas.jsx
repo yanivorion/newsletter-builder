@@ -84,11 +84,12 @@ function WorkspaceCanvas({
   }, [draggingId, dragOffset, newsletters, onUpdateNewsletterPosition]);
 
   const handleWheel = useCallback((e) => {
+    // Always prevent default to stop browser back/forward navigation on horizontal scroll
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (e.ctrlKey || e.metaKey) {
-      // Zoom - prevent default to stop browser zoom
-      e.preventDefault();
-      
-      // Get cursor position relative to canvas
+      // Zoom with pinch or CMD+scroll
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
       
@@ -96,7 +97,6 @@ function WorkspaceCanvas({
       const cursorY = e.clientY - rect.top;
       
       // Calculate zoom delta (smoother, like Figma)
-      // Use smaller multiplier for trackpad pinch which has larger deltaY
       const delta = -e.deltaY * ZOOM_SENSITIVITY;
       const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * (1 + delta)));
       
@@ -112,7 +112,7 @@ function WorkspaceCanvas({
       setPanOffset({ x: newPanX, y: newPanY });
       if (onSetZoom) onSetZoom(newZoom);
     } else {
-      // Pan with scroll wheel - let it flow naturally
+      // Pan with two-finger scroll
       setPanOffset(prev => ({
         x: prev.x - e.deltaX,
         y: prev.y - e.deltaY
