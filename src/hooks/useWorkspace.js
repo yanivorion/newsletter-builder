@@ -175,21 +175,25 @@ export function useWorkspace() {
     forceUpdate(n => n + 1);
   }, []);
 
-  // Zoom controls
+  // Zoom controls - limits match WorkspaceCanvas
+  const MIN_ZOOM = 0.1;
+  const MAX_ZOOM = 3;
+  const ZOOM_STEP = 0.1; // For button zoom
+  
   const setZoom = useCallback((zoom) => {
-    workspaceRef.current.zoom = Math.max(0.25, Math.min(2, zoom));
+    workspaceRef.current.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
     forceUpdate(n => n + 1);
   }, []);
 
   const zoomIn = useCallback(() => {
     const ws = workspaceRef.current;
-    ws.zoom = Math.min(2, ws.zoom + 0.05);
+    ws.zoom = Math.min(MAX_ZOOM, ws.zoom + ZOOM_STEP);
     forceUpdate(n => n + 1);
   }, []);
 
   const zoomOut = useCallback(() => {
     const ws = workspaceRef.current;
-    ws.zoom = Math.max(0.25, ws.zoom - 0.05);
+    ws.zoom = Math.max(MIN_ZOOM, ws.zoom - ZOOM_STEP);
     forceUpdate(n => n + 1);
   }, []);
 

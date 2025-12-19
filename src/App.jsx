@@ -1242,6 +1242,7 @@ function AppContent() {
           onZoomIn={workspace.zoomIn}
           onZoomOut={workspace.zoomOut}
           onZoomReset={handleZoomReset}
+          onSetZoom={workspace.setZoom}
           onAddNewsletter={() => workspace.addNewsletter(blankTemplate)}
           onSelectNewsletter={workspace.setActiveNewsletter}
           onSelectSection={workspace.setSelectedSection}

@@ -5,6 +5,11 @@ import { cn } from '../lib/utils';
 
 const GRID_SIZE = 40; // Size of snap grid
 
+// Zoom sensitivity - lower = smoother (like Figma)
+const ZOOM_SENSITIVITY = 0.002;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 3;
+
 function WorkspaceCanvas({
   zoom,
   newsletters,
@@ -13,6 +18,7 @@ function WorkspaceCanvas({
   onZoomIn,
   onZoomOut,
   onZoomReset,
+  onSetZoom,
   onAddNewsletter,
   onSelectNewsletter,
   onSelectSection,
@@ -80,16 +86,38 @@ function WorkspaceCanvas({
   const handleWheel = useCallback((e) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
-      if (e.deltaY < 0) onZoomIn();
-      else onZoomOut();
+      
+      // Get cursor position relative to canvas
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      
+      // Calculate zoom delta (smoother, like Figma)
+      // Use smaller multiplier for trackpad pinch which has larger deltaY
+      const delta = -e.deltaY * ZOOM_SENSITIVITY;
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * (1 + delta)));
+      
+      // Calculate the point in canvas space under the cursor (before zoom)
+      const pointXBeforeZoom = (cursorX - panOffset.x) / zoom;
+      const pointYBeforeZoom = (cursorY - panOffset.y) / zoom;
+      
+      // Calculate new pan offset to keep cursor position as focal point
+      const newPanX = cursorX - pointXBeforeZoom * newZoom;
+      const newPanY = cursorY - pointYBeforeZoom * newZoom;
+      
+      // Update both zoom and pan together
+      setPanOffset({ x: newPanX, y: newPanY });
+      if (onSetZoom) onSetZoom(newZoom);
     } else {
-      // Pan with scroll wheel
+      // Pan with scroll wheel (also smooth it a bit)
       setPanOffset(prev => ({
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY
+        x: prev.x - e.deltaX * 0.8,
+        y: prev.y - e.deltaY * 0.8
       }));
     }
-  }, [onZoomIn, onZoomOut]);
+  }, [zoom, panOffset, onSetZoom]);
 
   // Handle newsletter drag start
   const handleNewsletterDragStart = useCallback((id, e) => {
