@@ -84,9 +84,10 @@ function WorkspaceCanvas({
   }, [draggingId, dragOffset, newsletters, onUpdateNewsletterPosition]);
 
   const handleWheel = useCallback((e) => {
+    // Prevent default on all wheel events to stop browser back/forward navigation
+    e.preventDefault();
+    
     if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      
       // Get cursor position relative to canvas
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -147,6 +148,14 @@ function WorkspaceCanvas({
     };
   }, []);
 
+  // Attach wheel listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   // Calculate "Add Newsletter" button position
   const getAddButtonPosition = () => {
@@ -172,7 +181,6 @@ function WorkspaceCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      onWheel={handleWheel}
       style={{ cursor: isPanning ? 'grabbing' : (draggingId ? 'grabbing' : 'default') }}
     >
       {/* Infinite dot pattern background - subtle */}
