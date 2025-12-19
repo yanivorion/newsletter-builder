@@ -15,6 +15,7 @@ function AccentTextSection({
   tagPosition = 'sidebar-right', // 'sidebar-right', 'sidebar-left', 'top-right', 'top-left', 'top-center'
   tagHeight = 'auto', // 'auto' or number in px
   tagGap = 24, // gap between tag and content
+  tagOffsetX = 0, // horizontal offset for tag (negative = more right in RTL)
   content = 'החודש ציינו את יום הטבעונות הבינלאומי עם ארוחת חומוס טעימה במיוחד, הזדמנות נהדרת להתכנס יחד, לטעום, ליהנות ולחוות את האוכל טבעוני.\n\nכמובן שגם חגגנו ימי הולדת לילידי נובמבר, הייתה אווירה חמימה ומשמחת. כמו תמיד היה כיף לראות את כולם מתאחדים כדי לחגוג יחד.',
   accentColor = '#04D1FC',
   showAccentBar = false,
@@ -148,6 +149,8 @@ function AccentTextSection({
     justifyContent: 'center',
     minHeight: tagHeight === 'auto' ? 'auto' : `${tagHeight}px`,
     height: tagHeight === 'auto' ? 'auto' : `${tagHeight}px`,
+    marginRight: tagPosition === 'sidebar-right' ? `${tagOffsetX}px` : 0,
+    marginLeft: tagPosition === 'sidebar-left' ? `${tagOffsetX}px` : 0,
     cursor: isSelected ? 'text' : 'default',
     outline: editingField === 'tag' ? '2px dashed #04D1FC' : 'none'
   };

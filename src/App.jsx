@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save, Plus, Minus, LogIn, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save, Plus, Minus, LogIn, FolderOpen, Upload, FileJson } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
 import { useAuth } from './context/AuthContext';
 import TemplateSelector from './components/TemplateSelector';
@@ -698,6 +698,75 @@ function AppContent() {
     setTimeout(() => setSaveSuccess(false), 2000);
   }, [workspace.activeNewsletter, currentProjectId, savedProjects]);
 
+  // Export current project as JSON file
+  const exportToJSON = useCallback(() => {
+    if (!workspace.activeNewsletter) return;
+    
+    const exportData = {
+      name: workspace.activeNewsletter.name || 'Untitled Newsletter',
+      sections: workspace.activeNewsletter.sections || [],
+      exportedAt: new Date().toISOString(),
+      version: '1.0'
+    };
+    
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${exportData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [workspace.activeNewsletter]);
+
+  // Import project from JSON file
+  const importFromJSON = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        
+        if (!importedData.sections || !Array.isArray(importedData.sections)) {
+          throw new Error('Invalid file format: missing sections array');
+        }
+        
+        const newsletterData = {
+          id: `newsletter-${Date.now()}`,
+          name: importedData.name || 'Imported Newsletter',
+          sections: importedData.sections,
+          position: { x: 100, y: 100 }
+        };
+        
+        workspace.loadState({
+          newsletters: [newsletterData],
+          activeNewsletterId: newsletterData.id,
+          zoom: 1
+        });
+        
+        setCurrentProjectId(null);
+        setShowProjectsDashboard(false);
+        setShowLanding(false);
+        
+        alert('Newsletter imported successfully!');
+      } catch (err) {
+        console.error('Import failed:', err);
+        alert('Failed to import file: ' + err.message);
+      }
+    };
+    
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+  }, [workspace]);
+
+  // File input ref for import
+  const fileInputRef = React.useRef(null);
+
   // Load a project into the workspace
   const loadProject = useCallback((project) => {
     const newsletterData = {
@@ -1018,6 +1087,35 @@ function AppContent() {
                 <Download className="w-4 h-4" />
                 Export
               </Button>
+              
+              <div className="w-px h-4 bg-zinc-200 mx-1" />
+              
+              {/* JSON Import/Export */}
+              <Button 
+                onClick={exportToJSON} 
+                size="sm"
+                variant="outline"
+                title="Export as JSON file"
+              >
+                <FileJson className="w-4 h-4" />
+                JSON
+              </Button>
+              <Button 
+                onClick={() => fileInputRef.current?.click()} 
+                size="sm"
+                variant="outline"
+                title="Import from JSON file"
+              >
+                <Upload className="w-4 h-4" />
+                Import
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={importFromJSON}
+                className="hidden"
+              />
             </>
           )}
           

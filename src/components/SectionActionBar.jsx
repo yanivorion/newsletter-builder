@@ -3267,6 +3267,18 @@ function SectionActionBar({
               suffix="px"
             />
           </div>
+          {/* Tag Horizontal Offset */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Offset X</span>
+            <NumberStepper
+              value={section.tagOffsetX || 0}
+              onChange={(v) => onUpdate({ tagOffsetX: v })}
+              min={-100}
+              max={100}
+              step={5}
+              suffix="px"
+            />
+          </div>
         </div>
       </ActionGroup>
       
