@@ -910,231 +910,254 @@ function AppContent() {
 
   return (
     <div className="h-screen flex flex-col bg-zinc-50">
-      {/* Header */}
-      <header className="h-14 bg-white/80 backdrop-blur-xl border-b border-zinc-200/50 flex items-center justify-between px-4 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
+      {/* Top Bar 1: File & Project Management */}
+      <header className="h-11 bg-zinc-900 flex items-center justify-between px-4 sticky top-0 z-50">
+        <div className="flex items-center gap-3">
           <Button 
             variant="ghost" 
             size="sm"
             onClick={handleBackToLanding}
-            className="text-zinc-600 hover:text-zinc-900"
+            className="text-zinc-400 hover:text-white hover:bg-zinc-800 h-7"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Home
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="text-xs">Home</span>
           </Button>
           
-          <div className="h-5 w-px bg-zinc-200" />
+          <div className="h-4 w-px bg-zinc-700" />
           
           <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-zinc-400" />
-            <span className="text-sm font-medium text-zinc-700">
+            <Mail className="w-3.5 h-3.5 text-zinc-500" />
+            <span className="text-xs font-medium text-zinc-300">
               {workspace.activeNewsletterName || 'Workspace'}
             </span>
-            <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">
-              {workspace.newsletters.length} {workspace.newsletters.length === 1 ? 'newsletter' : 'newsletters'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-            <Save className="w-3 h-3" />
-            <span>Auto-saved</span>
           </div>
         </div>
 
-        {/* Center - Actions + Zoom */}
+        {/* Center: File Operations */}
+        <div className="flex items-center gap-1">
+          <Button 
+            onClick={() => fileInputRef.current?.click()} 
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800"
+            title="Open project from file"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="text-xs">Open</span>
+          </Button>
+          <Button 
+            onClick={exportToJSON} 
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800"
+            title="Save project as JSON file"
+          >
+            <FileJson className="w-3.5 h-3.5" />
+            <span className="text-xs">Save As</span>
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={importFromJSON}
+            className="hidden"
+          />
+          
+          <div className="h-4 w-px bg-zinc-700 mx-1" />
+          
+          <Button 
+            onClick={saveCurrentAsProject} 
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "h-7 px-2.5",
+              saveSuccess 
+                ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            )}
+          >
+            {saveSuccess ? (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                <span className="text-xs">Saved!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span className="text-xs">Save</span>
+              </>
+            )}
+          </Button>
+          
+          <Button 
+            onClick={() => {
+              saveCurrentAsProject();
+              setShowProjectsDashboard(true);
+              setShowLanding(false);
+            }} 
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800"
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            <span className="text-xs">Projects</span>
+          </Button>
+          
+          {isAuthenticated && (
+            <Button 
+              onClick={handleSaveToCloud} 
+              size="sm"
+              variant="ghost"
+              disabled={isSaving}
+              className="h-7 px-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800"
+            >
+              {isSaving ? (
+                <>
+                  <Save className="w-3.5 h-3.5 animate-pulse" />
+                  <span className="text-xs">Syncing...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span className="text-xs">Cloud</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Right: Auth */}
+        <div className="flex items-center">
+          {isAuthenticated ? (
+            <UserMenu />
+          ) : supabaseConfigured ? (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowAuth(true)}
+              className="text-zinc-400 hover:text-white hover:bg-zinc-800 h-7"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span className="text-xs">Sign in</span>
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      {/* Top Bar 2: Tools & Export */}
+      <header className="h-11 bg-white border-b border-zinc-200 flex items-center justify-between px-4 sticky top-11 z-40">
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => workspace.addNewsletter(blankTemplate)}
-            className="text-zinc-500 hover:text-zinc-900"
+            className="text-zinc-600 hover:text-zinc-900 h-7"
             title="New newsletter (⌘N)"
           >
-            <Plus className="w-4 h-4" />
-            New
+            <Plus className="w-3.5 h-3.5" />
+            <span className="text-xs">New</span>
           </Button>
           
-          <div className="w-px h-4 bg-zinc-200 mx-2" />
+          <div className="w-px h-4 bg-zinc-200 mx-1" />
           
           <Button
             variant="ghost"
             size="sm"
             onClick={workspace.undo}
             disabled={!workspace.canUndo}
-            className={cn("text-zinc-500", !workspace.canUndo && "opacity-40 cursor-not-allowed")}
+            className={cn("text-zinc-600 h-7 w-7 p-0", !workspace.canUndo && "opacity-40 cursor-not-allowed")}
             title="Undo (⌘Z)"
           >
-            <Undo2 className="w-4 h-4" />
+            <Undo2 className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={workspace.redo}
             disabled={!workspace.canRedo}
-            className={cn("text-zinc-500", !workspace.canRedo && "opacity-40 cursor-not-allowed")}
+            className={cn("text-zinc-600 h-7 w-7 p-0", !workspace.canRedo && "opacity-40 cursor-not-allowed")}
             title="Redo (⌘⇧Z)"
           >
-            <Redo2 className="w-4 h-4" />
+            <Redo2 className="w-3.5 h-3.5" />
           </Button>
 
-          <div className="w-px h-4 bg-zinc-200 mx-2" />
+          <div className="w-px h-4 bg-zinc-200 mx-1" />
 
           {/* Zoom Controls */}
           <Button
             variant="ghost"
             size="sm"
             onClick={workspace.zoomOut}
-            className="text-zinc-500 h-8 w-8 p-0"
+            className="text-zinc-600 h-7 w-7 p-0"
             title="Zoom out"
           >
-            <Minus className="w-4 h-4" />
+            <Minus className="w-3.5 h-3.5" />
           </Button>
-          <span className="text-xs font-mono text-zinc-500 w-10 text-center">
+          <span className="text-[10px] font-mono text-zinc-500 w-9 text-center">
             {Math.round(workspace.zoom * 100)}%
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={workspace.zoomIn}
-            className="text-zinc-500 h-8 w-8 p-0"
+            className="text-zinc-600 h-7 w-7 p-0"
             title="Zoom in"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
           </Button>
         </div>
 
+        {/* Center: Newsletter count */}
         <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">
+            {workspace.newsletters.length} {workspace.newsletters.length === 1 ? 'newsletter' : 'newsletters'}
+          </span>
+          <span className="text-[10px] text-zinc-400 flex items-center gap-1">
+            <Save className="w-2.5 h-2.5" />
+            Auto-saved
+          </span>
+        </div>
+
+        {/* Right: Share & Export */}
+        <div className="flex items-center gap-1.5">
           {workspace.activeNewsletter && (
             <>
-              {/* Save Project Button (Local) */}
-              <Button 
-                onClick={saveCurrentAsProject} 
-                size="sm"
-                variant={saveSuccess ? "default" : "outline"}
-                className={cn(
-                  saveSuccess && "bg-emerald-600 hover:bg-emerald-600 border-emerald-600"
-                )}
-              >
-                {saveSuccess ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Saved!
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save
-                  </>
-                )}
-              </Button>
               
-              {/* My Projects Button */}
               <Button 
-                onClick={() => {
-                  saveCurrentAsProject();
-                  setShowProjectsDashboard(true);
-                  setShowLanding(false);
-                }} 
+                onClick={handleExport} 
                 size="sm"
                 variant="outline"
+                className="h-7"
+                title="Download as HTML file"
               >
-                <FolderOpen className="w-4 h-4" />
-                Projects
+                <Download className="w-3.5 h-3.5" />
+                <span className="text-xs">Download HTML</span>
               </Button>
-              
-              {/* Save to Cloud button - only when authenticated */}
-              {isAuthenticated && (
-                <Button 
-                  onClick={handleSaveToCloud} 
-                  size="sm"
-                  variant="outline"
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <Save className="w-4 h-4 animate-pulse" />
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Sync to Cloud
-                    </>
-                  )}
-                </Button>
-              )}
               <Button 
                 onClick={handleCopyDesign} 
                 size="sm"
-                variant={copiedDesign ? "default" : "outline"}
                 className={cn(
-                  copiedDesign && "bg-emerald-600 hover:bg-emerald-600 border-emerald-600"
+                  "h-7",
+                  copiedDesign 
+                    ? "bg-emerald-600 hover:bg-emerald-600" 
+                    : "bg-zinc-900 hover:bg-zinc-800"
                 )}
+                title="Copy HTML for Gmail"
               >
                 {copiedDesign ? (
                   <>
-                    <Check className="w-4 h-4" />
-                    Copied!
+                    <Check className="w-3.5 h-3.5" />
+                    <span className="text-xs">Copied!</span>
                   </>
                 ) : (
                   <>
-                    <Clipboard className="w-4 h-4" />
-                    Copy for Gmail
+                    <Clipboard className="w-3.5 h-3.5" />
+                    <span className="text-xs">Copy for Gmail</span>
                   </>
                 )}
               </Button>
-              <Button onClick={handleExport} size="sm">
-                <Download className="w-4 h-4" />
-                Export
-              </Button>
-              
-              <div className="w-px h-4 bg-zinc-200 mx-1" />
-              
-              {/* JSON Import/Export */}
-              <Button 
-                onClick={exportToJSON} 
-                size="sm"
-                variant="outline"
-                title="Export as JSON file"
-              >
-                <FileJson className="w-4 h-4" />
-                JSON
-              </Button>
-              <Button 
-                onClick={() => fileInputRef.current?.click()} 
-                size="sm"
-                variant="outline"
-                title="Import from JSON file"
-              >
-                <Upload className="w-4 h-4" />
-                Import
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={importFromJSON}
-                className="hidden"
-              />
             </>
           )}
-          
-          {/* Auth section */}
-          <div className="flex items-center gap-2 ml-2 pl-2 border-l border-zinc-200">
-            {isAuthenticated ? (
-              <UserMenu />
-            ) : supabaseConfigured ? (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowAuth(true)}
-                className="text-zinc-600 hover:text-zinc-900"
-              >
-                <LogIn className="w-4 h-4 mr-1.5" />
-                Sign in
-              </Button>
-            ) : null}
-          </div>
         </div>
       </header>
 
