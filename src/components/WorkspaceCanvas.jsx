@@ -84,10 +84,10 @@ function WorkspaceCanvas({
   }, [draggingId, dragOffset, newsletters, onUpdateNewsletterPosition]);
 
   const handleWheel = useCallback((e) => {
-    // Prevent default on all wheel events to stop browser back/forward navigation
-    e.preventDefault();
-    
     if (e.ctrlKey || e.metaKey) {
+      // Zoom - prevent default to stop browser zoom
+      e.preventDefault();
+      
       // Get cursor position relative to canvas
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -112,7 +112,7 @@ function WorkspaceCanvas({
       setPanOffset({ x: newPanX, y: newPanY });
       if (onSetZoom) onSetZoom(newZoom);
     } else {
-      // Pan with scroll wheel
+      // Pan with scroll wheel - let it flow naturally
       setPanOffset(prev => ({
         x: prev.x - e.deltaX,
         y: prev.y - e.deltaY
@@ -181,11 +181,7 @@ function WorkspaceCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      style={{ 
-        cursor: isPanning ? 'grabbing' : (draggingId ? 'grabbing' : 'default'),
-        overscrollBehavior: 'none',
-        touchAction: 'none'
-      }}
+      style={{ cursor: isPanning ? 'grabbing' : (draggingId ? 'grabbing' : 'default') }}
     >
       {/* Infinite dot pattern background - subtle */}
       <div 
