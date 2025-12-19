@@ -475,6 +475,22 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [workspace, showLanding]);
 
+  // Prevent accidental navigation (trackpad swipe, back button, etc.)
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Only show warning if user has newsletters in the workspace
+      if (workspace.newsletters.length > 0 && !showLanding) {
+        e.preventDefault();
+        // Most browsers require returnValue to be set
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [workspace.newsletters.length, showLanding]);
+
   const handleStart = useCallback(() => {
     setCurrentProjectId(null); // Reset project ID for new project
     workspace.addNewsletter(blankTemplate);
