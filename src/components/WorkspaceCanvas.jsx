@@ -181,7 +181,11 @@ function WorkspaceCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      style={{ cursor: isPanning ? 'grabbing' : (draggingId ? 'grabbing' : 'default') }}
+      style={{ 
+        cursor: isPanning ? 'grabbing' : (draggingId ? 'grabbing' : 'default'),
+        overscrollBehaviorX: 'contain',
+        overscrollBehaviorY: 'contain'
+      }}
     >
       {/* Infinite dot pattern background - subtle */}
       <div 

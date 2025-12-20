@@ -925,7 +925,7 @@ function AppContent() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-50">
+    <div className="h-screen flex flex-col bg-zinc-50" style={{ overscrollBehavior: 'none' }}>
       {/* Top Bar 1: File & Project Management */}
       <header className="h-11 bg-zinc-900 flex items-center justify-between px-4 sticky top-0 z-50">
         <div className="flex items-center gap-3">
