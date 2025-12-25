@@ -14,7 +14,7 @@ export const useAuth = () => {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false - don't block the app
   const [error, setError] = useState(null);
 
   // Fetch user profile
@@ -36,45 +36,27 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Initialize auth state - rely on onAuthStateChange which is more reliable
+  // Initialize auth state - non-blocking
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      console.log('Supabase not configured, skipping auth init');
-      setLoading(false);
+      console.log('Supabase not configured');
       return;
     }
 
-    console.log('Setting up auth listener...');
-    
-    // Set a max loading time
-    const maxLoadingTimeout = setTimeout(() => {
-      console.log('Max loading time reached');
-      setLoading(false);
-    }, 2000);
-
-    // Listen for auth changes - this will fire with INITIAL_SESSION
+    // Listen for auth changes in background
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth event:', event, session?.user?.email);
-        
-        clearTimeout(maxLoadingTimeout);
-        
         if (session?.user) {
           setUser(session.user);
-          setProfile(null); // Skip profile for now
         } else {
           setUser(null);
           setProfile(null);
         }
-        
-        setLoading(false);
       }
     );
 
-    return () => {
-      clearTimeout(maxLoadingTimeout);
-      subscription?.unsubscribe();
-    };
+    return () => subscription?.unsubscribe();
   }, []);
 
   // Sign up with email
