@@ -115,10 +115,12 @@ export function AuthProvider({ children }) {
   // Sign in with email
   const signIn = useCallback(async (email, password) => {
     if (!isSupabaseConfigured()) {
-      throw new Error('Supabase is not configured');
+      console.error('Supabase not configured. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+      throw new Error('Supabase is not configured. Please contact support.');
     }
 
     setError(null);
+    console.log('Attempting sign in for:', email);
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -126,10 +128,12 @@ export function AuthProvider({ children }) {
     });
 
     if (error) {
+      console.error('Sign in error:', error);
       setError(error.message);
       throw error;
     }
 
+    console.log('Sign in successful');
     return data;
   }, []);
 
