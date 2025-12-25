@@ -125,6 +125,36 @@ function PromoCardSection({
   const isHorizontal = layout === 'image-left' || layout === 'image-right';
   const showImage = layout !== 'text-only' && layout !== 'no-image';
   const isImageFirst = layout === 'image-left' || layout === 'image-top';
+  const isRTL = textDirection === 'rtl';
+
+  // In RTL mode, we need to flip 'left' and 'right' to achieve visual alignment
+  // User picks "left" = they want content on the LEFT side of the screen
+  const getVisualTextAlign = () => {
+    if (contentAlign === 'center') return 'center';
+    if (isRTL) {
+      // In RTL, CSS 'left' = visual right, CSS 'right' = visual left
+      return contentAlign === 'left' ? 'right' : 'left';
+    }
+    return contentAlign;
+  };
+
+  const getVisualAlignItems = () => {
+    if (contentAlign === 'center') return 'center';
+    if (isRTL) {
+      // In RTL, flex-start = visual right, flex-end = visual left
+      return contentAlign === 'left' ? 'flex-end' : 'flex-start';
+    }
+    return contentAlign === 'left' ? 'flex-start' : 'flex-end';
+  };
+
+  const getVisualMargin = () => {
+    if (contentAlign === 'center') return '0 auto';
+    if (isRTL) {
+      // In RTL, margin-right auto = visual left, margin-left auto = visual right
+      return contentAlign === 'left' ? '0 0 0 auto' : '0 auto 0 0';
+    }
+    return contentAlign === 'left' ? '0 auto 0 0' : '0 0 0 auto';
+  };
 
   const containerStyle = {
     backgroundColor,
@@ -142,7 +172,7 @@ function PromoCardSection({
     alignItems: verticalAlign === 'top' ? 'flex-start' : verticalAlign === 'bottom' ? 'flex-end' : 'center',
     gap: `${contentGap}px`,
     maxWidth: '800px',
-    margin: contentAlign === 'center' ? '0 auto' : contentAlign === 'left' ? '0 auto 0 0' : '0 0 0 auto'
+    margin: getVisualMargin()
   };
 
   const imageContainerStyle = {
@@ -164,8 +194,8 @@ function PromoCardSection({
     display: 'flex',
     flexDirection: 'column',
     gap: `${textGap}px`,
-    textAlign: contentAlign,
-    alignItems: contentAlign === 'center' ? 'center' : contentAlign === 'left' ? 'flex-start' : 'flex-end'
+    textAlign: getVisualTextAlign(),
+    alignItems: getVisualAlignItems()
   };
 
   const titleStyle = {
