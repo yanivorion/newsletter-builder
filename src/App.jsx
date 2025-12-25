@@ -805,14 +805,17 @@ function AppContent() {
       return;
     }
     
+    // Newsletter structure needs data.sections, not just sections
     const newsletterData = {
       id: `newsletter-${Date.now()}`,
       name: project.name,
-      sections: project.sections || [],
+      data: {
+        sections: project.sections || []
+      },
       position: { x: 100, y: 100 }
     };
     
-    console.log('Created newsletter data:', newsletterData.name, newsletterData.sections?.length, 'sections');
+    console.log('Created newsletter data:', newsletterData.name, newsletterData.data.sections?.length, 'sections');
     
     workspace.loadState({
       newsletters: [newsletterData],
