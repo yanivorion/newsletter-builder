@@ -1262,6 +1262,43 @@ function SectionActionBar({
             placeholder="Enter title..."
             className="w-full h-8 px-2 text-sm font-medium rounded border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#04D1FC] focus:border-transparent"
           />
+          {/* Font Family */}
+          <div className="flex items-center gap-2">
+            <Type className="w-3 h-3 text-zinc-400" />
+            <span className="text-[10px] text-zinc-400 w-12">Font</span>
+            <select
+              value={section.fontFamily || 'Noto Sans Hebrew'}
+              onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+              className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+            >
+              <option value="Noto Sans Hebrew">Noto Sans Hebrew</option>
+              <option value="Poppins">Poppins</option>
+              <option value="Inter">Inter</option>
+              <option value="Assistant">Assistant</option>
+              <option value="Heebo">Heebo</option>
+            </select>
+          </div>
+          {/* Text Color */}
+          <div className="flex items-center gap-2">
+            <Palette className="w-3 h-3 text-zinc-400" />
+            <span className="text-[10px] text-zinc-400 w-12">Color</span>
+            <input 
+              type="color" 
+              value={section.textColor || '#FFFFFF'} 
+              onChange={(e) => onUpdate({ textColor: e.target.value })} 
+              className="w-6 h-6 rounded cursor-pointer border border-zinc-200" 
+            />
+            <div className="flex gap-0.5">
+              {['#FFFFFF', '#000000', '#04D1FC'].map(c => (
+                <button
+                  key={c}
+                  onClick={() => onUpdate({ textColor: c })}
+                  className={cn("w-5 h-5 rounded border", section.textColor === c ? "border-[#04D1FC]" : "border-zinc-200")}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
           <div className="flex items-center gap-1">
             <NumberStepper
               value={section.titleFontSize || 28}
@@ -1489,6 +1526,50 @@ function SectionActionBar({
           placeholder="Enter section title..."
           className="w-full h-8 px-2 text-sm rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#04D1FC] focus:border-transparent"
         />
+      </ActionGroup>
+
+      {/* Font Family */}
+      <ActionGroup label="Font Family" icon={Type} expanded={expanded.fontFamily} onToggle={() => toggleExpand('fontFamily')}>
+        <select
+          value={section.fontFamily || 'Noto Sans Hebrew'}
+          onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+          className="w-full h-7 text-xs rounded border border-zinc-200 px-2"
+        >
+          <option value="Noto Sans Hebrew">Noto Sans Hebrew (עברית)</option>
+          <option value="Poppins">Poppins (English)</option>
+          <option value="Inter">Inter (English)</option>
+          <option value="Assistant">Assistant (עברית)</option>
+          <option value="Heebo">Heebo (עברית)</option>
+        </select>
+      </ActionGroup>
+
+      {/* Text Color */}
+      <ActionGroup label="Text Color" icon={Palette} expanded={expanded.textColor} onToggle={() => toggleExpand('textColor')}>
+        <div className="space-y-2">
+          <div className="flex gap-1 flex-wrap">
+            {['#FFFFFF', '#000000', '#1D1D1F', '#04D1FC', '#17A298', '#F2D64C', '#FF7B3E'].map(color => (
+              <button
+                key={color}
+                onClick={() => onUpdate({ color: color })}
+                className={cn(
+                  "w-6 h-6 rounded border-2 transition-transform hover:scale-110",
+                  section.color === color ? "border-[#04D1FC] scale-110" : "border-transparent"
+                )}
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+            <label className="w-6 h-6 rounded border border-dashed border-zinc-300 flex items-center justify-center cursor-pointer hover:border-zinc-400">
+              <input
+                type="color"
+                value={section.color || '#FFFFFF'}
+                onChange={(e) => onUpdate({ color: e.target.value })}
+                className="sr-only"
+              />
+              <Palette className="w-3 h-3 text-zinc-400" />
+            </label>
+          </div>
+        </div>
       </ActionGroup>
 
       {/* Background */}
