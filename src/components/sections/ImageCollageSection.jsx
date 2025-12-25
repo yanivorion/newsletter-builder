@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { getPresetById } from '../../lib/collagePresets';
 
 function ImageCollageSection({ 
@@ -16,8 +16,12 @@ function ImageCollageSection({
   gradientEnd,
   overlayColor = '#000000',
   overlayOpacity = 0,
-  padding: sectionPadding
+  padding: sectionPadding,
+  // Interactive props
+  isSelected = false,
+  onImageReplace
 }) {
+  const fileInputRefs = useRef({});
   const preset = getPresetById(layout) || getPresetById('featured-left');
   
   // Determine background style based on type
@@ -133,18 +137,50 @@ function ImageCollageSection({
           const imageBg = imageBackgrounds?.[cell.imageIndex] || null;
           const overlay = imageOverlays?.[cell.imageIndex] || null;
           
+          const handleImageClick = (e) => {
+            if (isSelected && onImageReplace) {
+              e.stopPropagation();
+              // Trigger file input for this specific image
+              const input = fileInputRefs.current[cell.imageIndex];
+              if (input) input.click();
+            }
+          };
+          
+          const handleFileChange = (e) => {
+            const file = e.target.files?.[0];
+            if (file && onImageReplace) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                onImageReplace(cell.imageIndex, event.target.result);
+              };
+              reader.readAsDataURL(file);
+            }
+            e.target.value = ''; // Reset for next selection
+          };
+          
           return (
             <div
               key={cell.id}
+              onClick={handleImageClick}
               style={{
                 gridColumn: `${cell.col} / span ${cell.colSpan}`,
                 gridRow: `${cell.row} / span ${cell.rowSpan}`,
                 borderRadius: '0px',
                 overflow: 'hidden',
                 backgroundColor: imageBg || 'transparent',
-                position: 'relative'
+                position: 'relative',
+                cursor: isSelected ? 'pointer' : 'default'
               }}
             >
+              {/* Hidden file input for this cell */}
+              <input
+                ref={el => fileInputRefs.current[cell.imageIndex] = el}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+              
               {image ? (
                 <>
                   <img 
@@ -170,9 +206,40 @@ function ImageCollageSection({
                       }}
                     />
                   )}
+                  {/* Click to replace hint when selected */}
+                  {isSelected && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0,
+                        transition: 'opacity 0.2s',
+                        color: 'white',
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        gap: '4px'
+                      }}
+                      className="image-replace-hint"
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                      <span>Click to replace</span>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div 
+                  onClick={handleImageClick}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -182,7 +249,11 @@ function ImageCollageSection({
                     justifyContent: 'center',
                     color: '#a1a1aa',
                     fontSize: '12px',
-                    gap: '4px'
+                    gap: '4px',
+                    cursor: isSelected ? 'pointer' : 'default',
+                    backgroundColor: isSelected ? 'rgba(4, 209, 252, 0.1)' : 'transparent',
+                    border: isSelected ? '2px dashed #04D1FC' : 'none',
+                    boxSizing: 'border-box'
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -190,7 +261,7 @@ function ImageCollageSection({
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21,15 16,10 5,21"/>
                   </svg>
-                  <span>{cell.id}</span>
+                  <span>{isSelected ? 'Click to add' : cell.id}</span>
                 </div>
               )}
             </div>

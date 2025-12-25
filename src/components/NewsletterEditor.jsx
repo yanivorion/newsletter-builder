@@ -504,6 +504,15 @@ function NewsletterEditor({
                 }
               : undefined
           }
+          onImageReplace={
+            (section.type === 'imageCollage' || section.type === 'imageSequence')
+              ? (imageIndex, newImageData) => {
+                  const images = [...(section.images || [])];
+                  images[imageIndex] = newImageData;
+                  onSectionUpdate?.(section.id, { images });
+                }
+              : undefined
+          }
         />
 
         {/* Bottom Shape Divider */}

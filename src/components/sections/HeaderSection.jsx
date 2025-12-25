@@ -89,6 +89,9 @@ function InlineSpacerHandle({ value, onChange, min = 0, max = 100, label, isEdit
   );
 }
 
+// Font stack for Hebrew text
+const HEBREW_FONT_STACK = "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif";
+
 function HeaderSection({ 
   backgroundColor, 
   gradientEnd, 
@@ -123,6 +126,7 @@ function HeaderSection({
   dateBadgeBg = '#04D1FC',
   dateBadgeColor = '#FFFFFF',
   textColor = '#FFFFFF',
+  fontFamily = 'Noto Sans Hebrew', // Font family prop
   // Spacing controls
   paddingTop = 48,
   paddingBottom = 48,
@@ -137,6 +141,19 @@ function HeaderSection({
   minHeight,
   verticalAlign = 'center' // top, center, bottom
 }) {
+  // Determine font stack based on selected font family
+  const getFontStack = (family) => {
+    const stacks = {
+      'Noto Sans Hebrew': HEBREW_FONT_STACK,
+      'Poppins': "'Poppins', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      'Assistant': "'Assistant', 'Arial Hebrew', Arial, sans-serif",
+      'Heebo': "'Heebo', 'Arial Hebrew', Arial, sans-serif"
+    };
+    return stacks[family] || HEBREW_FONT_STACK;
+  };
+  
+  const fontStack = getFontStack(fontFamily);
   const handleSpacingChange = (field, value) => {
     if (onSpacingChange) {
       onSpacingChange(field, value);
@@ -223,7 +240,7 @@ function HeaderSection({
   };
 
   const titleStyle = {
-    fontFamily: "'Poppins', 'Helvetica Neue', Arial, sans-serif", 
+    fontFamily: fontStack, 
     fontSize: `${titleFontSize}px`, 
     fontWeight: titleFontWeight,
     fontStyle: titleFontStyle,
@@ -243,7 +260,7 @@ function HeaderSection({
     borderRadius: '4px',
     fontSize: '12px',
     fontWeight: '600',
-    fontFamily: "'Poppins', Arial, sans-serif",
+    fontFamily: fontStack,
     letterSpacing: '0.05em'
   };
 
@@ -356,7 +373,7 @@ function HeaderSection({
       
       {hasSubtitle && (
         <p style={{ 
-          fontFamily: "'Poppins', 'Noto Sans Hebrew', Arial, sans-serif", 
+          fontFamily: fontStack, 
           fontSize: `${subtitleFontSize}px`,
           fontWeight: subtitleFontWeight,
           margin: '0',

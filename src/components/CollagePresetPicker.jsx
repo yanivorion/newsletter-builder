@@ -2,47 +2,103 @@ import React, { useState } from 'react';
 import { collagePresets, presetCategories, getImageCountForPreset } from '../lib/collagePresets';
 import { cn } from '../lib/utils';
 
+// Basic layouts shown in the main tab (matching the user's preferred layouts)
+const BASIC_LAYOUT_IDS = [
+  'single',
+  '2-horizontal',
+  '2-left-large',
+  '3-vertical',
+  '3-horizontal',
+  '3-left-featured',
+  '3-right-featured',
+  '3-bottom-featured',
+  '6-grid',
+  '5-featured-left',
+  '4-top-featured',
+  '4-grid',
+  '4-mosaic-1',
+  '4-corners',
+  '9-grid',
+  '6-mosaic',
+];
+
 function CollagePresetPicker({ currentPreset, onSelectPreset }) {
+  const [activeTab, setActiveTab] = useState('basic');
   const [activeCategory, setActiveCategory] = useState('all');
   
-  const filteredPresets = activeCategory === 'all' 
-    ? collagePresets 
-    : collagePresets.filter(p => p.category === activeCategory);
+  // Get presets based on active tab
+  const basicPresets = collagePresets.filter(p => BASIC_LAYOUT_IDS.includes(p.id));
+  const morePresets = collagePresets.filter(p => !BASIC_LAYOUT_IDS.includes(p.id));
+  
+  // Filter by category when in "more" tab
+  const filteredMorePresets = activeCategory === 'all' 
+    ? morePresets 
+    : morePresets.filter(p => p.category === activeCategory);
+  
+  const displayPresets = activeTab === 'basic' ? basicPresets : filteredMorePresets;
 
   return (
     <div className="space-y-3">
-      {/* Category Filter */}
-      <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+      {/* Main Tabs: Basic / More Layouts */}
+      <div className="flex gap-1 border-b border-zinc-200 pb-2">
         <button
-          onClick={() => setActiveCategory('all')}
+          onClick={() => setActiveTab('basic')}
           className={cn(
-            "px-2.5 py-1 rounded-md text-[10px] font-medium whitespace-nowrap transition-colors",
-            activeCategory === 'all' 
+            "px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
+            activeTab === 'basic' 
               ? "bg-zinc-900 text-white" 
               : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
           )}
         >
-          All
+          Basic
         </button>
-        {presetCategories.map(cat => (
+        <button
+          onClick={() => setActiveTab('more')}
+          className={cn(
+            "px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
+            activeTab === 'more' 
+              ? "bg-zinc-900 text-white" 
+              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+          )}
+        >
+          More Layouts
+        </button>
+      </div>
+      
+      {/* Category Filter (only show in More Layouts tab) */}
+      {activeTab === 'more' && (
+        <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
           <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
+            onClick={() => setActiveCategory('all')}
             className={cn(
               "px-2.5 py-1 rounded-md text-[10px] font-medium whitespace-nowrap transition-colors",
-              activeCategory === cat.id 
-                ? "bg-zinc-900 text-white" 
+              activeCategory === 'all' 
+                ? "bg-[#04D1FC] text-white" 
                 : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
             )}
           >
-            {cat.name}
+            All
           </button>
-        ))}
-      </div>
+          {presetCategories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-[10px] font-medium whitespace-nowrap transition-colors",
+                activeCategory === cat.id 
+                  ? "bg-[#04D1FC] text-white" 
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              )}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Preset Grid */}
       <div className="grid grid-cols-4 gap-1.5">
-        {filteredPresets.map((preset) => {
+        {displayPresets.map((preset) => {
           const isSelected = currentPreset === preset.id;
           const imageCount = getImageCountForPreset(preset);
           

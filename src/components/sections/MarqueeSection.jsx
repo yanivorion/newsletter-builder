@@ -72,7 +72,7 @@ const MarqueeSection = forwardRef(function MarqueeSection({
     fontWeight,
     letterSpacing,
     color: textColor,
-    fontFamily: "'Poppins', 'Helvetica Neue', Arial, sans-serif"
+    fontFamily: "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif"
   };
 
   const separatorStyle = {

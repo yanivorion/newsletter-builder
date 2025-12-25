@@ -739,45 +739,58 @@ function AppContent() {
   }, [workspace.activeNewsletter]);
 
   // Import project from JSON file
-  const importFromJSON = useCallback((event) => {
+  const importFromJSON = useCallback(async (event) => {
     const file = event.target.files?.[0];
-    if (!file) return;
     
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target.result);
-        
-        if (!importedData.sections || !Array.isArray(importedData.sections)) {
-          throw new Error('Invalid file format: missing sections array');
-        }
-        
-        const newsletterData = {
-          id: `newsletter-${Date.now()}`,
-          name: importedData.name || 'Imported Newsletter',
-          sections: importedData.sections,
-          position: { x: 100, y: 100 }
-        };
-        
-        workspace.loadState({
-          newsletters: [newsletterData],
-          activeNewsletterId: newsletterData.id,
-          zoom: 1
-        });
-        
-        setCurrentProjectId(null);
-        setShowProjectsDashboard(false);
-        setShowLanding(false);
-        
-        alert('Newsletter imported successfully!');
-      } catch (err) {
-        console.error('Import failed:', err);
-        alert('Failed to import file: ' + err.message);
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+    
+    console.log('Reading file:', file.name, file.type, file.size);
+    
+    try {
+      // Use the modern File API
+      const content = await file.text();
+      console.log('File content loaded, length:', content?.length);
+      
+      if (!content) {
+        throw new Error('File is empty or could not be read');
       }
-    };
+      
+      const importedData = JSON.parse(content);
+      console.log('Parsed data:', importedData);
+      
+      if (!importedData.sections || !Array.isArray(importedData.sections)) {
+        throw new Error('Invalid file format: missing sections array');
+      }
+      
+      // Create newsletter with correct format - data contains sections
+      const newsletterData = {
+        id: `newsletter-${Date.now()}`,
+        name: importedData.name || 'Imported Newsletter',
+        data: { sections: importedData.sections }, // Wrap sections in data object
+        position: { x: 100, y: 100 }
+      };
+      
+      workspace.loadState({
+        newsletters: [newsletterData],
+        activeNewsletterId: newsletterData.id,
+        zoom: 1
+      });
+      
+      setCurrentProjectId(null);
+      setShowProjectsDashboard(false);
+      setShowLanding(false);
+      
+      alert('Newsletter imported successfully!');
+    } catch (err) {
+      console.error('Import failed:', err);
+      alert('Failed to import file: ' + err.message);
+    }
     
-    reader.readAsText(file);
-    event.target.value = ''; // Reset input
+    // Reset input for next selection
+    event.target.value = '';
   }, [workspace]);
 
   // File input ref for import
@@ -925,7 +938,7 @@ function AppContent() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-50" style={{ overscrollBehavior: 'none' }}>
+    <div className="h-screen flex flex-col bg-zinc-50">
       {/* Top Bar 1: File & Project Management */}
       <header className="h-11 bg-zinc-900 flex items-center justify-between px-4 sticky top-0 z-50">
         <div className="flex items-center gap-3">
@@ -952,15 +965,27 @@ function AppContent() {
         {/* Center: File Operations */}
         <div className="flex items-center gap-1">
           <Button 
-            onClick={() => fileInputRef.current?.click()} 
+            onClick={() => {
+              if (fileInputRef.current) {
+                fileInputRef.current.value = ''; // Reset to allow re-selecting same file
+                fileInputRef.current.click();
+              }
+            }} 
             size="sm"
             variant="ghost"
             className="h-7 px-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800"
-            title="Open project from file"
+            title="Open project from JSON file"
           >
             <Upload className="w-3.5 h-3.5" />
             <span className="text-xs">Open</span>
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            onChange={importFromJSON}
+            style={{ display: 'none' }}
+          />
           <Button 
             onClick={exportToJSON} 
             size="sm"
@@ -971,13 +996,6 @@ function AppContent() {
             <FileJson className="w-3.5 h-3.5" />
             <span className="text-xs">Save As</span>
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={importFromJSON}
-            className="hidden"
-          />
           
           <div className="h-4 w-px bg-zinc-700 mx-1" />
           

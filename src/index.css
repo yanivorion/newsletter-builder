@@ -82,6 +82,13 @@ body {
   line-height: 1.5;
 }
 
+/* Ensure all Hebrew text uses Noto Sans Hebrew */
+[dir="rtl"], 
+[style*="direction: rtl"],
+[style*="direction:rtl"] {
+  font-family: 'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif;
+}
+
 /* Smooth scrolling */
 * {
   scroll-behavior: smooth;

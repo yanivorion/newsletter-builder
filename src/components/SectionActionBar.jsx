@@ -1142,6 +1142,16 @@ function SectionActionBar({
                   title={color.name}
                 />
               ))}
+              {/* Full color picker */}
+              <div className="relative w-6 h-6 rounded border-2 border-zinc-200 overflow-hidden hover:border-zinc-400 transition-colors">
+                <input
+                  type="color"
+                  value={section.backgroundColor || '#FFFFFF'}
+                  onChange={(e) => onUpdate({ backgroundColor: e.target.value, backgroundType: 'solid', gradientEnd: null })}
+                  className="absolute inset-0 w-8 h-8 -top-1 -left-1 cursor-pointer"
+                  title="Pick custom color"
+                />
+              </div>
             </div>
           </div>
 
@@ -1515,6 +1525,28 @@ function SectionActionBar({
           value={section.verticalAlign || 'center'} 
           onChange={(v) => onUpdate({ verticalAlign: v })} 
         />
+      </ActionGroup>
+
+      {/* Horizontal Alignment */}
+      <ActionGroup label="Horizontal Align" icon={AlignCenter} expanded={expanded.horizontalAlign} onToggle={() => toggleExpand('horizontalAlign')}>
+        <div className="flex gap-0.5">
+          {[
+            { value: 'left', icon: AlignLeft, label: 'Left' },
+            { value: 'center', icon: AlignCenter, label: 'Center' },
+            { value: 'right', icon: AlignRight, label: 'Right' },
+          ].map(({ value, icon: Icon, label }) => (
+            <Button
+              key={value}
+              variant={section.textAlign === value ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onUpdate({ textAlign: value })}
+              className="h-7 w-7 p-0"
+              title={label}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </Button>
+          ))}
+        </div>
       </ActionGroup>
 
       {/* Divider */}

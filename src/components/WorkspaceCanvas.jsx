@@ -5,10 +5,10 @@ import { cn } from '../lib/utils';
 
 const GRID_SIZE = 40; // Size of snap grid
 
-// Zoom sensitivity - lower = smoother (like Figma)
-const ZOOM_SENSITIVITY = 0.002;
+// Zoom constants for smooth Figma-like zoom
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
+const ZOOM_SENSITIVITY = 0.002; // Lower = slower/smoother zoom
 
 function WorkspaceCanvas({
   zoom,
@@ -84,35 +84,34 @@ function WorkspaceCanvas({
   }, [draggingId, dragOffset, newsletters, onUpdateNewsletterPosition]);
 
   const handleWheel = useCallback((e) => {
-    // Always prevent default to stop browser back/forward navigation on horizontal scroll
-    e.preventDefault();
-    e.stopPropagation();
-    
     if (e.ctrlKey || e.metaKey) {
-      // Zoom with pinch or CMD+scroll
+      e.preventDefault();
+      
+      // Get cursor position relative to canvas
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
       
       const cursorX = e.clientX - rect.left;
       const cursorY = e.clientY - rect.top;
       
-      // Calculate zoom delta (smoother, like Figma)
-      const delta = -e.deltaY * ZOOM_SENSITIVITY;
-      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * (1 + delta)));
+      // Calculate zoom change - smooth and slow like Figma
+      const zoomDelta = -e.deltaY * ZOOM_SENSITIVITY;
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * (1 + zoomDelta)));
       
-      // Calculate the point in canvas space under the cursor (before zoom)
-      const pointXBeforeZoom = (cursorX - panOffset.x) / zoom;
-      const pointYBeforeZoom = (cursorY - panOffset.y) / zoom;
-      
-      // Calculate new pan offset to keep cursor position as focal point
-      const newPanX = cursorX - pointXBeforeZoom * newZoom;
-      const newPanY = cursorY - pointYBeforeZoom * newZoom;
-      
-      // Update both zoom and pan together
-      setPanOffset({ x: newPanX, y: newPanY });
-      if (onSetZoom) onSetZoom(newZoom);
+      if (newZoom !== zoom && onSetZoom) {
+        // Calculate the point in world coordinates before zoom
+        const worldX = (cursorX - panOffset.x) / zoom;
+        const worldY = (cursorY - panOffset.y) / zoom;
+        
+        // After zoom, adjust pan so the world point stays under cursor
+        const newPanX = cursorX - worldX * newZoom;
+        const newPanY = cursorY - worldY * newZoom;
+        
+        setPanOffset({ x: newPanX, y: newPanY });
+        onSetZoom(newZoom);
+      }
     } else {
-      // Pan with two-finger scroll
+      // Pan with scroll wheel
       setPanOffset(prev => ({
         x: prev.x - e.deltaX,
         y: prev.y - e.deltaY
@@ -148,14 +147,6 @@ function WorkspaceCanvas({
     };
   }, []);
 
-  // Attach wheel listener with passive: false to allow preventDefault
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', handleWheel);
-  }, [handleWheel]);
 
   // Calculate "Add Newsletter" button position
   const getAddButtonPosition = () => {
@@ -181,11 +172,8 @@ function WorkspaceCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      style={{ 
-        cursor: isPanning ? 'grabbing' : (draggingId ? 'grabbing' : 'default'),
-        overscrollBehaviorX: 'contain',
-        overscrollBehaviorY: 'contain'
-      }}
+      onWheel={handleWheel}
+      style={{ cursor: isPanning ? 'grabbing' : (draggingId ? 'grabbing' : 'default') }}
     >
       {/* Infinite dot pattern background - subtle */}
       <div 

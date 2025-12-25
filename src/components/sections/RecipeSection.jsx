@@ -1,6 +1,15 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ImageIcon, Upload } from 'lucide-react';
 
+// Font stacks mapping
+const FONT_STACKS = {
+  'Noto Sans Hebrew': "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif",
+  'Poppins': "'Poppins', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+  'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+  'Assistant': "'Assistant', 'Arial Hebrew', Arial, sans-serif",
+  'Heebo': "'Heebo', 'Arial Hebrew', Arial, sans-serif"
+};
+
 function RecipeSection({ 
   title, 
   image, 
@@ -15,12 +24,14 @@ function RecipeSection({
   minHeight,
   imageHeight = 200,
   imageFit = 'cover',
+  fontFamily = 'Noto Sans Hebrew',
   // Inline editing props
   isSelected = false,
   onTitleChange,
   onIngredientsChange,
   onInstructionsChange
 }) {
+  const fontStack = FONT_STACKS[fontFamily] || FONT_STACKS['Noto Sans Hebrew'];
   const titleRef = useRef(null);
   const [editingField, setEditingField] = useState(null);
 
@@ -67,7 +78,7 @@ function RecipeSection({
   const hasContentAfterIngredients = hasInstructions;
 
   const titleStyle = {
-    fontFamily: 'Noto Sans Hebrew, sans-serif',
+    fontFamily: fontStack,
     fontSize: '24px',
     fontWeight: '600',
     color: '#333333',
@@ -86,7 +97,7 @@ function RecipeSection({
   };
 
   const textBlockStyle = {
-    fontFamily: 'Noto Sans Hebrew, sans-serif',
+    fontFamily: fontStack,
     fontSize: '14px',
     color: '#333333',
     lineHeight: '1.8',

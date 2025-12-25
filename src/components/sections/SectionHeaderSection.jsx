@@ -1,5 +1,17 @@
 import React, { useRef, useState, useEffect } from 'react';
 
+// Font stack for Hebrew text
+const HEBREW_FONT_STACK = "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif";
+
+// Font stacks mapping
+const FONT_STACKS = {
+  'Noto Sans Hebrew': HEBREW_FONT_STACK,
+  'Poppins': "'Poppins', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+  'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+  'Assistant': "'Assistant', 'Arial Hebrew', Arial, sans-serif",
+  'Heebo': "'Heebo', 'Arial Hebrew', Arial, sans-serif"
+};
+
 function SectionHeaderSection({ 
   text, 
   backgroundColor, 
@@ -17,10 +29,12 @@ function SectionHeaderSection({
   verticalAlign = 'center', // top, center, bottom
   textDirection = 'rtl',
   textAlign = 'right',
+  fontFamily = 'Noto Sans Hebrew', // Font family prop
   // Inline editing props
   isSelected = false,
   onContentChange
 }) {
+  const fontStack = FONT_STACKS[fontFamily] || HEBREW_FONT_STACK;
   const editableRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -49,13 +63,25 @@ function SectionHeaderSection({
     bottom: 'flex-end'
   };
 
+  // Map horizontal align - account for RTL direction
+  // In RTL mode, flex-start is on the right, flex-end is on the left
+  const getHorizontalAlign = () => {
+    const isRtl = (textDirection || 'rtl') === 'rtl';
+    if (textAlign === 'center') return 'center';
+    // Visual "right" should be flex-start in RTL, flex-end in LTR
+    if (textAlign === 'right') return isRtl ? 'flex-start' : 'flex-end';
+    // Visual "left" should be flex-end in RTL, flex-start in LTR
+    if (textAlign === 'left') return isRtl ? 'flex-end' : 'flex-start';
+    return 'center';
+  };
+
   const headerStyle = {
     ...backgroundStyle,
     color: color || '#FFFFFF',
     padding: `${padding || 14}px 24px`,
     textAlign: textAlign || 'center',
     direction: textDirection || 'rtl',
-    fontFamily: 'Inter, -apple-system, sans-serif',
+    fontFamily: fontStack,
     fontSize: `${fontSize || 14}px`,
     fontWeight: fontWeight || 600,
     letterSpacing: letterSpacing || '0.08em',
@@ -66,7 +92,7 @@ function SectionHeaderSection({
     display: 'flex',
     flexDirection: 'column',
     justifyContent: alignMap[verticalAlign] || 'center',
-    alignItems: textAlign === 'left' ? 'flex-start' : textAlign === 'right' ? 'flex-end' : 'center'
+    alignItems: getHorizontalAlign()
   };
 
   const textStyle = {

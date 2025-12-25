@@ -167,7 +167,7 @@ function ProfileCardsSection({
   };
 
   const nameStyle = {
-    fontFamily: 'Poppins, sans-serif',
+    fontFamily: "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif",
     fontSize: '14px',
     fontWeight: '500',
     color: '#333333',
@@ -178,7 +178,7 @@ function ProfileCardsSection({
   };
 
   const titleStyle = {
-    fontFamily: 'Poppins, sans-serif',
+    fontFamily: "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif",
     fontSize: '12px',
     color: '#666666',
     margin: '0',
