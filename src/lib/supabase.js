@@ -11,6 +11,10 @@ console.log('Supabase config:', {
   urlPrefix: supabaseUrl?.substring(0, 20) + '...'
 });
 
+// Check if there's a stored session in localStorage
+const storedSession = localStorage.getItem('sb-' + supabaseUrl?.split('//')[1]?.split('.')[0] + '-auth-token');
+console.log('Stored auth token exists:', !!storedSession);
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials not found. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file');
 }

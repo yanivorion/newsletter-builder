@@ -48,23 +48,40 @@ export function AuthProvider({ children }) {
     const initAuth = async () => {
       try {
         console.log('Initializing auth...');
-        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        );
+        
+        const sessionPromise = supabase.auth.getSession();
+        
+        const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+        const session = data?.session;
         
         if (error) {
           console.error('Error getting session:', error);
         }
         
-        console.log('Session found:', !!session, session?.user?.email);
+        console.log('Session check complete:', {
+          hasSession: !!session,
+          email: session?.user?.email,
+          expiresAt: session?.expires_at
+        });
         
         if (session?.user) {
+          console.log('Setting user from session');
           setUser(session.user);
           const profileData = await fetchProfile(session.user.id);
           setProfile(profileData);
+        } else {
+          console.log('No session found');
         }
       } catch (err) {
         console.error('Auth init error:', err);
         setError(err.message);
       } finally {
+        console.log('Auth init complete, setting loading to false');
         setLoading(false);
       }
     };
