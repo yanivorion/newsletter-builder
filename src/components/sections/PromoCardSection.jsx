@@ -127,33 +127,15 @@ function PromoCardSection({
   const isImageFirst = layout === 'image-left' || layout === 'image-top';
   const isRTL = textDirection === 'rtl';
 
-  // In RTL mode, we need to flip 'left' and 'right' to achieve visual alignment
-  // User picks "left" = they want content on the LEFT side of the screen
-  const getVisualTextAlign = () => {
+  // For flexbox align-items in a column container with RTL direction,
+  // flex-start/flex-end are affected by the direction
+  const getAlignItems = () => {
     if (contentAlign === 'center') return 'center';
     if (isRTL) {
-      // In RTL, CSS 'left' = visual right, CSS 'right' = visual left
-      return contentAlign === 'left' ? 'right' : 'left';
-    }
-    return contentAlign;
-  };
-
-  const getVisualAlignItems = () => {
-    if (contentAlign === 'center') return 'center';
-    if (isRTL) {
-      // In RTL, flex-start = visual right, flex-end = visual left
+      // In RTL column flex, flex-start = right side, flex-end = left side
       return contentAlign === 'left' ? 'flex-end' : 'flex-start';
     }
     return contentAlign === 'left' ? 'flex-start' : 'flex-end';
-  };
-
-  const getVisualMargin = () => {
-    if (contentAlign === 'center') return '0 auto';
-    if (isRTL) {
-      // In RTL, margin-right auto = visual left, margin-left auto = visual right
-      return contentAlign === 'left' ? '0 0 0 auto' : '0 auto 0 0';
-    }
-    return contentAlign === 'left' ? '0 auto 0 0' : '0 0 0 auto';
   };
 
   const containerStyle = {
@@ -166,13 +148,14 @@ function PromoCardSection({
     borderRadius: borderRadius ? `${borderRadius}px` : 0
   };
 
+  // margin-left/margin-right are physical properties, not affected by direction
   const contentWrapperStyle = {
     display: 'flex',
     flexDirection: isHorizontal ? 'row' : 'column',
     alignItems: verticalAlign === 'top' ? 'flex-start' : verticalAlign === 'bottom' ? 'flex-end' : 'center',
     gap: `${contentGap}px`,
     maxWidth: '800px',
-    margin: getVisualMargin()
+    margin: contentAlign === 'center' ? '0 auto' : contentAlign === 'left' ? '0 auto 0 0' : '0 0 0 auto'
   };
 
   const imageContainerStyle = {
@@ -189,13 +172,14 @@ function PromoCardSection({
     order: isImageFirst ? 0 : 1
   };
 
+  // text-align left/right are physical properties, not affected by direction
   const textContainerStyle = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     gap: `${textGap}px`,
-    textAlign: getVisualTextAlign(),
-    alignItems: getVisualAlignItems()
+    textAlign: contentAlign,
+    alignItems: getAlignItems()
   };
 
   const titleStyle = {
