@@ -388,18 +388,33 @@ function AppContent() {
   // Use workspace hook for multi-newsletter management (local state)
   const workspace = useWorkspace();
 
-  // Load saved projects on mount
+  // Load saved projects - from cloud when authenticated, localStorage when not
   useEffect(() => {
-    try {
-      const projects = localStorage.getItem(PROJECTS_STORAGE_KEY);
-      if (projects) {
-        const parsed = JSON.parse(projects);
-        setSavedProjects(parsed);
+    if (isAuthenticated && dbNewsletters.length > 0) {
+      // Convert cloud newsletters to project format
+      const cloudProjects = dbNewsletters.map(n => ({
+        id: n.id,
+        name: n.name,
+        sections: n.sections || [],
+        createdAt: n.created_at,
+        updatedAt: n.updated_at,
+        isCloud: true
+      }));
+      setSavedProjects(cloudProjects);
+      console.log('Loaded', cloudProjects.length, 'projects from cloud');
+    } else if (!isAuthenticated) {
+      // Load from localStorage when not authenticated
+      try {
+        const projects = localStorage.getItem(PROJECTS_STORAGE_KEY);
+        if (projects) {
+          const parsed = JSON.parse(projects);
+          setSavedProjects(parsed);
+        }
+      } catch (e) {
+        console.error('Failed to load projects:', e);
       }
-    } catch (e) {
-      console.error('Failed to load projects:', e);
     }
-  }, []);
+  }, [isAuthenticated, dbNewsletters]);
 
   // Load saved workspace on mount (for backward compatibility)
   useEffect(() => {
@@ -680,39 +695,74 @@ function AppContent() {
     }
   };
 
-  // Save current workspace as a project
-  const saveCurrentAsProject = useCallback(() => {
+  // Save current workspace as a project (cloud when authenticated, local otherwise)
+  const saveCurrentAsProject = useCallback(async () => {
     if (!workspace.activeNewsletter) return;
     
     const now = new Date().toISOString();
     const projectData = {
-      id: currentProjectId || `project-${Date.now()}`,
       name: workspace.activeNewsletter.name || 'Untitled Newsletter',
-      sections: workspace.activeNewsletter.sections || [],
-      createdAt: currentProjectId ? savedProjects.find(p => p.id === currentProjectId)?.createdAt : now,
-      updatedAt: now
+      sections: workspace.activeNewsletter.sections || []
     };
     
-    setSavedProjects(prev => {
-      const existing = prev.findIndex(p => p.id === projectData.id);
-      let updated;
-      if (existing >= 0) {
-        updated = [...prev];
-        updated[existing] = projectData;
-      } else {
-        updated = [projectData, ...prev];
+    // Save to cloud if authenticated
+    if (isAuthenticated) {
+      try {
+        setIsSaving(true);
+        
+        // Check if we're updating an existing cloud project
+        const existingCloud = savedProjects.find(p => p.id === currentProjectId && p.isCloud);
+        
+        if (existingCloud) {
+          // Update existing cloud project
+          await dbUpdateNewsletter(currentProjectId, projectData);
+          console.log('Updated cloud project:', currentProjectId);
+        } else {
+          // Create new cloud project
+          const created = await dbCreateNewsletter(projectData);
+          setCurrentProjectId(created.id);
+          console.log('Created cloud project:', created.id);
+        }
+        
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      } catch (err) {
+        console.error('Cloud save failed:', err);
+        alert('Failed to save to cloud: ' + err.message);
+      } finally {
+        setIsSaving(false);
       }
-      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    
-    if (!currentProjectId) {
-      setCurrentProjectId(projectData.id);
+    } else {
+      // Save to localStorage when not authenticated
+      const localProjectData = {
+        id: currentProjectId || `project-${Date.now()}`,
+        name: projectData.name,
+        sections: projectData.sections,
+        createdAt: currentProjectId ? savedProjects.find(p => p.id === currentProjectId)?.createdAt : now,
+        updatedAt: now
+      };
+      
+      setSavedProjects(prev => {
+        const existing = prev.findIndex(p => p.id === localProjectData.id);
+        let updated;
+        if (existing >= 0) {
+          updated = [...prev];
+          updated[existing] = localProjectData;
+        } else {
+          updated = [localProjectData, ...prev];
+        }
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      
+      if (!currentProjectId) {
+        setCurrentProjectId(localProjectData.id);
+      }
+      
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
     }
-    
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
-  }, [workspace.activeNewsletter, currentProjectId, savedProjects]);
+  }, [workspace.activeNewsletter, currentProjectId, savedProjects, isAuthenticated, dbCreateNewsletter, dbUpdateNewsletter]);
 
   // Export current project as JSON file
   const exportToJSON = useCallback(() => {
@@ -798,7 +848,7 @@ function AppContent() {
 
   // Load a project into the workspace
   const loadProject = useCallback((project) => {
-    console.log('Loading project:', project?.name, project?.id);
+    console.log('Loading project:', project?.name, project?.id, 'isCloud:', project?.isCloud);
     
     if (!project) {
       console.error('No project provided to loadProject');
@@ -823,65 +873,109 @@ function AppContent() {
       zoom: 1
     });
     
+    // Store project ID (cloud ID or local ID)
     setCurrentProjectId(project.id);
     setShowProjectsDashboard(false);
-    console.log('Project loaded successfully');
+    console.log('Project loaded successfully, ID:', project.id);
     setShowLanding(false);
   }, [workspace]);
 
-  // Delete a project
-  const deleteProject = useCallback((projectId) => {
-    if (confirm('Are you sure you want to delete this project?')) {
+  // Delete a project (cloud or local)
+  const deleteProject = useCallback(async (projectId) => {
+    if (!confirm('Are you sure you want to delete this project?')) return;
+    
+    const project = savedProjects.find(p => p.id === projectId);
+    
+    if (project?.isCloud && isAuthenticated) {
+      // Delete from cloud
+      try {
+        await dbDeleteNewsletter(projectId);
+        console.log('Deleted cloud project:', projectId);
+      } catch (err) {
+        console.error('Failed to delete cloud project:', err);
+        alert('Failed to delete: ' + err.message);
+        return;
+      }
+    } else {
+      // Delete from localStorage
       setSavedProjects(prev => {
         const updated = prev.filter(p => p.id !== projectId);
         localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
         return updated;
       });
-      
-      if (currentProjectId === projectId) {
-        setCurrentProjectId(null);
-      }
     }
-  }, [currentProjectId]);
+    
+    if (currentProjectId === projectId) {
+      setCurrentProjectId(null);
+    }
+  }, [currentProjectId, savedProjects, isAuthenticated, dbDeleteNewsletter]);
 
-  // Duplicate a project
-  const duplicateProject = useCallback((projectId) => {
+  // Duplicate a project (cloud or local)
+  const duplicateProject = useCallback(async (projectId) => {
     const project = savedProjects.find(p => p.id === projectId);
     if (!project) return;
     
-    const now = new Date().toISOString();
-    const newProject = {
-      ...project,
-      id: `project-${Date.now()}`,
-      name: `${project.name} (Copy)`,
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    setSavedProjects(prev => {
-      const updated = [newProject, ...prev];
-      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  }, [savedProjects]);
+    if (project.isCloud && isAuthenticated) {
+      // Duplicate in cloud
+      try {
+        await dbDuplicateNewsletter(projectId);
+        console.log('Duplicated cloud project:', projectId);
+      } catch (err) {
+        console.error('Failed to duplicate cloud project:', err);
+        alert('Failed to duplicate: ' + err.message);
+      }
+    } else {
+      // Duplicate locally
+      const now = new Date().toISOString();
+      const newProject = {
+        ...project,
+        id: `project-${Date.now()}`,
+        name: `${project.name} (Copy)`,
+        createdAt: now,
+        updatedAt: now,
+        isCloud: false
+      };
+      
+      setSavedProjects(prev => {
+        const updated = [newProject, ...prev];
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [savedProjects, isAuthenticated, dbDuplicateNewsletter]);
 
   // Rename a project
-  const renameProject = useCallback((projectId, newName) => {
-    setSavedProjects(prev => {
-      const updated = prev.map(p => 
-        p.id === projectId 
-          ? { ...p, name: newName, updatedAt: new Date().toISOString() }
-          : p
-      );
-      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
+  const renameProject = useCallback(async (projectId, newName) => {
+    const project = savedProjects.find(p => p.id === projectId);
+    
+    if (project?.isCloud && isAuthenticated) {
+      // Rename in cloud
+      try {
+        await dbUpdateNewsletter(projectId, { name: newName });
+        console.log('Renamed cloud project:', projectId);
+      } catch (err) {
+        console.error('Failed to rename cloud project:', err);
+        alert('Failed to rename: ' + err.message);
+        return;
+      }
+    } else {
+      // Rename locally
+      setSavedProjects(prev => {
+        const updated = prev.map(p => 
+          p.id === projectId 
+            ? { ...p, name: newName, updatedAt: new Date().toISOString() }
+            : p
+        );
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
     
     // Also update workspace if this is the current project
     if (currentProjectId === projectId && workspace.activeNewsletterId) {
       workspace.renameNewsletter(workspace.activeNewsletterId, newName);
     }
-  }, [currentProjectId, workspace]);
+  }, [currentProjectId, workspace, savedProjects, isAuthenticated, dbUpdateNewsletter]);
 
   const handleBackToLanding = useCallback(() => {
     // Auto-save current project before going back
