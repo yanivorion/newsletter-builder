@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Initialize auth state
+  // Initialize auth state - rely on onAuthStateChange which is more reliable
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       console.log('Supabase not configured, skipping auth init');
@@ -44,59 +44,24 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // Get initial session
-    const initAuth = async () => {
-      try {
-        console.log('Initializing auth...');
-        
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 5000)
-        );
-        
-        const sessionPromise = supabase.auth.getSession();
-        
-        const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
-        const session = data?.session;
-        
-        if (error) {
-          console.error('Error getting session:', error);
-        }
-        
-        console.log('Session check complete:', {
-          hasSession: !!session,
-          email: session?.user?.email,
-          expiresAt: session?.expires_at
-        });
-        
-        if (session?.user) {
-          console.log('Setting user from session');
-          setUser(session.user);
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
-        } else {
-          console.log('No session found');
-        }
-      } catch (err) {
-        console.error('Auth init error:', err);
-        setError(err.message);
-      } finally {
-        console.log('Auth init complete, setting loading to false');
-        setLoading(false);
-      }
-    };
+    console.log('Setting up auth listener...');
+    
+    // Set a max loading time
+    const maxLoadingTimeout = setTimeout(() => {
+      console.log('Max loading time reached');
+      setLoading(false);
+    }, 2000);
 
-    initAuth();
-
-    // Listen for auth changes
+    // Listen for auth changes - this will fire with INITIAL_SESSION
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth event:', event);
+        console.log('Auth event:', event, session?.user?.email);
+        
+        clearTimeout(maxLoadingTimeout);
         
         if (session?.user) {
           setUser(session.user);
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
+          setProfile(null); // Skip profile for now
         } else {
           setUser(null);
           setProfile(null);
@@ -107,9 +72,10 @@ export function AuthProvider({ children }) {
     );
 
     return () => {
+      clearTimeout(maxLoadingTimeout);
       subscription?.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, []);
 
   // Sign up with email
   const signUp = useCallback(async (email, password, fullName) => {
