@@ -53,6 +53,7 @@ import CollagePresetPicker from './CollagePresetPicker';
 import ShapeDividerPicker from './ShapeDividerPicker';
 import { mediaKit, getLogosByCategory } from '../lib/mediaKit';
 import IconPicker, { getIconByName } from './IconPicker';
+import { GOOGLE_FONTS, loadGoogleFont, getFontStack, getFontCategories } from '../lib/googleFonts';
 
 // Theme colors for dividers
 const DIVIDER_THEME_COLORS = [
@@ -778,6 +779,8 @@ function SectionActionBar({
         return renderHeroSplitControls();
       case 'alternating':
         return renderAlternatingControls();
+      case 'promoCard':
+        return renderPromoCardControls();
       default:
         return renderDefaultControls();
     }
@@ -2111,13 +2114,63 @@ function SectionActionBar({
       {/* Typography */}
       <ActionGroup label="Typography" icon={Type} expanded={expanded.typography} onToggle={() => toggleExpand('typography')}>
         <div className="space-y-2">
+          {/* Google Fonts Picker */}
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Font Family</span>
+            <select
+              value={section.fontFamily || 'Noto Sans Hebrew'}
+              onChange={(e) => {
+                const fontName = e.target.value;
+                loadGoogleFont(fontName);
+                onUpdate({ fontFamily: getFontStack(fontName) });
+              }}
+              className="w-full h-7 text-xs rounded border border-zinc-200 px-2"
+              style={{ fontFamily: section.fontFamily || "'Noto Sans Hebrew'" }}
+            >
+              <optgroup label="Hebrew">
+                {GOOGLE_FONTS.filter(f => f.category === 'hebrew').map(font => (
+                  <option key={font.name} value={getFontStack(font.name)} style={{ fontFamily: `'${font.name}'` }}>
+                    {font.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Sans-Serif">
+                {GOOGLE_FONTS.filter(f => f.category === 'sans-serif').map(font => (
+                  <option key={font.name} value={getFontStack(font.name)} style={{ fontFamily: `'${font.name}'` }}>
+                    {font.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Serif">
+                {GOOGLE_FONTS.filter(f => f.category === 'serif').map(font => (
+                  <option key={font.name} value={getFontStack(font.name)} style={{ fontFamily: `'${font.name}'` }}>
+                    {font.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Display">
+                {GOOGLE_FONTS.filter(f => f.category === 'display').map(font => (
+                  <option key={font.name} value={getFontStack(font.name)} style={{ fontFamily: `'${font.name}'` }}>
+                    {font.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Monospace">
+                {GOOGLE_FONTS.filter(f => f.category === 'monospace').map(font => (
+                  <option key={font.name} value={getFontStack(font.name)} style={{ fontFamily: `'${font.name}'` }}>
+                    {font.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-zinc-400 w-10">Size</span>
             <NumberStepper
               value={section.fontSize || 16}
               onChange={(v) => onUpdate({ fontSize: v })}
               min={10}
-              max={32}
+              max={72}
               suffix="px"
             />
           </div>
@@ -4483,6 +4536,292 @@ function SectionActionBar({
             <span className="text-[10px] text-zinc-400 w-12">Link</span>
             <input type="color" value={section.linkColor || '#1D1D1F'} onChange={(e) => onUpdate({ linkColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
           </div>
+        </div>
+      </ActionGroup>
+
+      {renderFontFamilyControl()}
+      {renderTextDirectionControls()}
+      {renderBackgroundControls()}
+    </>
+  );
+
+  const renderPromoCardControls = () => (
+    <>
+      {/* Layout */}
+      <ActionGroup label="Layout" icon={LayoutGrid} expanded={expanded.layout} onToggle={() => toggleExpand('layout')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-16">Layout</span>
+            <select 
+              value={section.layout || 'image-left'} 
+              onChange={(e) => onUpdate({ layout: e.target.value })} 
+              className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+            >
+              <option value="image-left">Image Left</option>
+              <option value="image-right">Image Right</option>
+              <option value="image-top">Image Top</option>
+              <option value="no-image">No Image</option>
+              <option value="text-only">Text Only</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-16">Align</span>
+            <div className="flex gap-1 flex-1">
+              <Button
+                variant={section.contentAlign === 'left' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ contentAlign: 'left' })}
+                className="h-6 w-6 p-0"
+              >
+                <AlignLeft className="w-3 h-3" />
+              </Button>
+              <Button
+                variant={section.contentAlign === 'center' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ contentAlign: 'center' })}
+                className="h-6 w-6 p-0"
+              >
+                <AlignCenter className="w-3 h-3" />
+              </Button>
+              <Button
+                variant={section.contentAlign === 'right' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ contentAlign: 'right' })}
+                className="h-6 w-6 p-0"
+              >
+                <AlignRight className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-16">V. Align</span>
+            <select 
+              value={section.verticalAlign || 'center'} 
+              onChange={(e) => onUpdate({ verticalAlign: e.target.value })} 
+              className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+            >
+              <option value="top">Top</option>
+              <option value="center">Center</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+        </div>
+      </ActionGroup>
+
+      {/* Image */}
+      {section.layout !== 'text-only' && section.layout !== 'no-image' && (
+        <ActionGroup label="Image" icon={ImageIcon} expanded={expanded.image} onToggle={() => toggleExpand('image')}>
+          <div className="space-y-2">
+            {section.image ? (
+              <div className="relative w-full h-20 bg-zinc-100 rounded-lg overflow-hidden">
+                <img src={section.image} alt="" className="w-full h-full object-cover" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onUpdate({ image: '' })}
+                  className="absolute top-1 right-1 h-5 w-5 p-0 bg-white/80 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3 text-red-500" />
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center p-3 bg-zinc-50 rounded-lg border-2 border-dashed border-zinc-200">
+                <ImageIcon className="w-6 h-6 mx-auto mb-1 text-zinc-300" />
+                <span className="text-[10px] text-zinc-400">No image</span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => onUpdate({ image: ev.target?.result });
+                  reader.readAsDataURL(file);
+                }
+              }}
+              className="w-full text-[10px]"
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Width</span>
+              <NumberStepper value={section.imageWidth || 200} onChange={(v) => onUpdate({ imageWidth: v })} min={100} max={400} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Height</span>
+              <NumberStepper value={section.imageHeight || 180} onChange={(v) => onUpdate({ imageHeight: v })} min={80} max={400} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Radius</span>
+              <NumberStepper value={section.imageRadius || 12} onChange={(v) => onUpdate({ imageRadius: v })} min={0} max={50} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Fit</span>
+              <select value={section.imageFit || 'cover'} onChange={(e) => onUpdate({ imageFit: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+                <option value="fill">Fill</option>
+              </select>
+            </div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={section.showImagePlaceholder !== false}
+                onChange={(e) => onUpdate({ showImagePlaceholder: e.target.checked })}
+                className="rounded"
+              />
+              <span className="text-[10px] text-zinc-500">Show placeholder</span>
+            </label>
+          </div>
+        </ActionGroup>
+      )}
+
+      {/* Content */}
+      <ActionGroup label="Content" icon={Type} expanded={expanded.content} onToggle={() => toggleExpand('content')}>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={section.title || ''}
+            onChange={(e) => onUpdate({ title: e.target.value })}
+            className="w-full h-7 px-2 text-xs rounded border border-zinc-200"
+            placeholder="Title..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <textarea
+            value={section.description || ''}
+            onChange={(e) => onUpdate({ description: e.target.value })}
+            className="w-full h-16 p-2 text-xs rounded border border-zinc-200 resize-none"
+            placeholder="Description..."
+            dir={section.textDirection || 'rtl'}
+          />
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={section.showCta !== false}
+              onChange={(e) => onUpdate({ showCta: e.target.checked })}
+              className="rounded"
+            />
+            <span className="text-[10px] text-zinc-500">Show CTA</span>
+          </label>
+          {section.showCta !== false && (
+            <>
+              <input
+                type="text"
+                value={section.ctaText || ''}
+                onChange={(e) => onUpdate({ ctaText: e.target.value })}
+                className="w-full h-6 px-2 text-xs rounded border border-zinc-200"
+                placeholder="CTA text..."
+                dir={section.textDirection || 'rtl'}
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Style</span>
+                <select value={section.ctaStyle || 'link'} onChange={(e) => onUpdate({ ctaStyle: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+                  <option value="link">Link</option>
+                  <option value="button">Button</option>
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+      </ActionGroup>
+
+      {/* Typography */}
+      <ActionGroup label="Typography" icon={Type} expanded={expanded.typography} onToggle={() => toggleExpand('typography')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Title</span>
+            <NumberStepper value={section.titleFontSize || 24} onChange={(v) => onUpdate({ titleFontSize: v })} min={14} max={48} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+            <select value={section.titleFontWeight || '600'} onChange={(e) => onUpdate({ titleFontWeight: e.target.value })} className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1">
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semi Bold</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Desc</span>
+            <NumberStepper value={section.descFontSize || 15} onChange={(v) => onUpdate({ descFontSize: v })} min={11} max={24} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Height</span>
+            <NumberStepper value={section.lineHeight || 1.6} onChange={(v) => onUpdate({ lineHeight: v })} min={1} max={2.5} step={0.1} />
+          </div>
+        </div>
+      </ActionGroup>
+
+      {/* Colors */}
+      <ActionGroup label="Colors" icon={Palette} expanded={expanded.colors} onToggle={() => toggleExpand('colors')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Title</span>
+            <input type="color" value={section.titleColor || '#1D1D1F'} onChange={(e) => onUpdate({ titleColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Desc</span>
+            <input type="color" value={section.descColor || '#666666'} onChange={(e) => onUpdate({ descColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">CTA</span>
+            <input type="color" value={section.ctaColor || '#1D1D1F'} onChange={(e) => onUpdate({ ctaColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+          </div>
+          {section.ctaStyle === 'button' && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Btn Bg</span>
+              <input type="color" value={section.ctaButtonBg || '#1D1D1F'} onChange={(e) => onUpdate({ ctaButtonBg: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+            </div>
+          )}
+        </div>
+      </ActionGroup>
+
+      {/* Spacing */}
+      <ActionGroup label="Spacing" icon={Move} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Padding V</span>
+            <NumberStepper value={section.paddingVertical || 32} onChange={(v) => onUpdate({ paddingVertical: v })} min={0} max={80} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Padding H</span>
+            <NumberStepper value={section.paddingHorizontal || 32} onChange={(v) => onUpdate({ paddingHorizontal: v })} min={0} max={80} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Gap</span>
+            <NumberStepper value={section.contentGap || 24} onChange={(v) => onUpdate({ contentGap: v })} min={8} max={64} suffix="px" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-14">Text Gap</span>
+            <NumberStepper value={section.textGap || 12} onChange={(v) => onUpdate({ textGap: v })} min={4} max={32} suffix="px" />
+          </div>
+        </div>
+      </ActionGroup>
+
+      {/* Border */}
+      <ActionGroup label="Border" icon={Layers} expanded={expanded.border} onToggle={() => toggleExpand('border')}>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={section.showBorder === true}
+              onChange={(e) => onUpdate({ showBorder: e.target.checked })}
+              className="rounded"
+            />
+            <span className="text-[10px] text-zinc-500">Show border</span>
+          </label>
+          {section.showBorder && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Color</span>
+                <input type="color" value={section.borderColor || '#E5E5E5'} onChange={(e) => onUpdate({ borderColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-12">Radius</span>
+                <NumberStepper value={section.borderRadius || 0} onChange={(v) => onUpdate({ borderRadius: v })} min={0} max={32} suffix="px" />
+              </div>
+            </>
+          )}
         </div>
       </ActionGroup>
 

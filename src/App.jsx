@@ -798,12 +798,21 @@ function AppContent() {
 
   // Load a project into the workspace
   const loadProject = useCallback((project) => {
+    console.log('Loading project:', project?.name, project?.id);
+    
+    if (!project) {
+      console.error('No project provided to loadProject');
+      return;
+    }
+    
     const newsletterData = {
       id: `newsletter-${Date.now()}`,
       name: project.name,
       sections: project.sections || [],
       position: { x: 100, y: 100 }
     };
+    
+    console.log('Created newsletter data:', newsletterData.name, newsletterData.sections?.length, 'sections');
     
     workspace.loadState({
       newsletters: [newsletterData],
@@ -813,6 +822,7 @@ function AppContent() {
     
     setCurrentProjectId(project.id);
     setShowProjectsDashboard(false);
+    console.log('Project loaded successfully');
     setShowLanding(false);
   }, [workspace]);
 
@@ -1795,6 +1805,45 @@ function getDefaultSectionData(sectionType) {
       alternateLayout: true,
       textAlign: 'right',
       textDirection: 'rtl'
+    },
+    promoCard: {
+      title: 'טיפים מאפליקציית Wix',
+      description: 'אפשרו לעסקים קטנים לקבל תשלומי Venmo ישירות מהטלפונים של הלקוחות. לאחר חיבור PayPal כספק תשלום, Venmo מופעל אוטומטית בקופה.',
+      ctaText: 'למידע נוסף ←',
+      ctaUrl: '#',
+      image: '',
+      layout: 'image-left', // 'image-left', 'image-right', 'image-top', 'no-image', 'text-only'
+      contentAlign: 'right', // 'left', 'center', 'right'
+      verticalAlign: 'center', // 'top', 'center', 'bottom'
+      imageWidth: 200,
+      imageHeight: 180,
+      imageFit: 'cover',
+      imageRadius: 12,
+      showImagePlaceholder: true,
+      backgroundColor: '#F5F5F7',
+      titleColor: '#1D1D1F',
+      descColor: '#666666',
+      ctaColor: '#1D1D1F',
+      fontFamily: 'Noto Sans Hebrew',
+      titleFontSize: 24,
+      titleFontWeight: '600',
+      descFontSize: 15,
+      descFontWeight: '400',
+      ctaFontSize: 14,
+      ctaFontWeight: '500',
+      lineHeight: 1.6,
+      paddingVertical: 32,
+      paddingHorizontal: 32,
+      contentGap: 24,
+      textGap: 12,
+      textDirection: 'rtl',
+      showCta: true,
+      ctaStyle: 'link', // 'link', 'button'
+      ctaButtonBg: '#1D1D1F',
+      ctaButtonColor: '#FFFFFF',
+      showBorder: false,
+      borderColor: '#E5E5E5',
+      borderRadius: 0
     },
     heroBanner: {
       title: 'כותרת ראשית',

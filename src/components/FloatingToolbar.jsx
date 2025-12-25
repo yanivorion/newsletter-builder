@@ -62,6 +62,7 @@ const layoutSectionTypes = [
   { type: 'updatesList', label: 'Updates List', icon: List, description: 'List with icons and links' },
   { type: 'appCards', label: 'App Cards', icon: AppWindow, description: 'App icons with descriptions' },
   { type: 'featureHighlight', label: 'Highlights', icon: PanelsTopLeft, description: 'Feature highlight cards' },
+  { type: 'promoCard', label: 'Promo Card', icon: PanelsTopLeft, description: 'Flexible promo with image & text' },
 ];
 
 function FloatingToolbar({ 

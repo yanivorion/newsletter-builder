@@ -48,6 +48,7 @@ import FeatureCardsSection from './sections/FeatureCardsSection';
 import UpdatesListSection from './sections/UpdatesListSection';
 import AppCardsSection from './sections/AppCardsSection';
 import FeatureHighlightSection from './sections/FeatureHighlightSection';
+import PromoCardSection from './sections/PromoCardSection';
 import HeroBannerSection from './sections/HeroBannerSection';
 import CelebrationSection from './sections/CelebrationSection';
 import HeroSplitSection from './sections/HeroSplitSection';
@@ -301,6 +302,7 @@ function NewsletterEditor({
       updatesList: UpdatesListSection,
       appCards: AppCardsSection,
       featureHighlight: FeatureHighlightSection,
+      promoCard: PromoCardSection,
       heroBanner: HeroBannerSection,
       celebration: CelebrationSection,
       heroSplit: HeroSplitSection,
@@ -392,7 +394,7 @@ function NewsletterEditor({
             } : undefined
           }
           onTextChange={
-            ['stats', 'featureGrid', 'specsTable', 'contactCards', 'steps', 'profileCards', 'accentText', 'featureCards', 'updatesList', 'appCards', 'featureHighlight', 'heroBanner', 'celebration', 'heroSplit', 'alternating'].includes(section.type)
+            ['stats', 'featureGrid', 'specsTable', 'contactCards', 'steps', 'profileCards', 'accentText', 'featureCards', 'updatesList', 'appCards', 'featureHighlight', 'promoCard', 'heroBanner', 'celebration', 'heroSplit', 'alternating'].includes(section.type)
               ? (field, value) => {
                   // Parse field to determine what to update
                   // Format: "title", "subtitle", "stat-0-value", "stat-0-label", etc.

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, forwardRef } from 'react';
 import { iconMap } from '../IconPicker';
+import { loadGoogleFont } from '../../lib/googleFonts';
 
 const MarqueeSection = forwardRef(function MarqueeSection({
   // New simple props
@@ -14,6 +15,7 @@ const MarqueeSection = forwardRef(function MarqueeSection({
   textColor = '#FFFFFF',
   fontSize = 16,
   fontWeight = '500',
+  fontFamily = 'Noto Sans Hebrew',
   letterSpacing = '0.02em',
   paddingVertical = 12,
   separator = '•',
@@ -30,6 +32,17 @@ const MarqueeSection = forwardRef(function MarqueeSection({
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
+
+  // Load Google Font when fontFamily changes
+  useEffect(() => {
+    if (fontFamily) {
+      // Extract font name from font-family string (e.g., "'Bebas Neue', cursive" -> "Bebas Neue")
+      const fontName = fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+      if (fontName) {
+        loadGoogleFont(fontName);
+      }
+    }
+  }, [fontFamily]);
 
   // Number of repetitions for seamless loop
   const repetitions = 8;
@@ -72,7 +85,7 @@ const MarqueeSection = forwardRef(function MarqueeSection({
     fontWeight,
     letterSpacing,
     color: textColor,
-    fontFamily: "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif"
+    fontFamily: fontFamily || "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif"
   };
 
   const separatorStyle = {
