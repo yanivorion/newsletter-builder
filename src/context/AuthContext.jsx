@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
   // Initialize auth state
   useEffect(() => {
     if (!isSupabaseConfigured()) {
+      console.log('Supabase not configured, skipping auth init');
       setLoading(false);
       return;
     }
@@ -46,7 +47,14 @@ export function AuthProvider({ children }) {
     // Get initial session
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Initializing auth...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+        
+        console.log('Session found:', !!session, session?.user?.email);
         
         if (session?.user) {
           setUser(session.user);
