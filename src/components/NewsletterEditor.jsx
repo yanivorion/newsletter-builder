@@ -25,7 +25,8 @@ import {
   Megaphone,
   PartyPopper,
   Columns,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Sparkles
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
@@ -53,6 +54,7 @@ import HeroBannerSection from './sections/HeroBannerSection';
 import CelebrationSection from './sections/CelebrationSection';
 import HeroSplitSection from './sections/HeroSplitSection';
 import AlternatingSection from './sections/AlternatingSection';
+import StyledTitleSection from './sections/StyledTitleSection';
 import ShapeDivider from './ShapeDivider';
 
 // Resize Handle Wrapper - only shows when hovering near bottom of section
@@ -175,6 +177,7 @@ function SectionResizeHandle({ currentValue, onResize, sectionRef, label = 'Heig
 
 const sectionTypes = [
   { type: 'header', label: 'Header', icon: LayoutTemplate },
+  { type: 'styledTitle', label: 'Styled Title', icon: Sparkles },
   { type: 'heroBanner', label: 'Hero', icon: Megaphone },
   { type: 'marquee', label: 'Marquee', icon: MoveHorizontal },
   { type: 'text', label: 'Text', icon: Type },
@@ -284,6 +287,7 @@ function NewsletterEditor({
 
     const sectionComponents = {
       header: HeaderSection,
+      styledTitle: StyledTitleSection,
       marquee: MarqueeSection,
       text: TextSection,
       sectionHeader: SectionHeaderSection,

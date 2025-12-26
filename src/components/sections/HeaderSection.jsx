@@ -127,13 +127,20 @@ function HeaderSection({
   dateBadgeColor = '#FFFFFF',
   textColor = '#FFFFFF',
   fontFamily = 'Noto Sans Hebrew', // Font family prop
-  // Spacing controls
+  // Spacing controls (inner padding)
   paddingTop = 48,
   paddingBottom = 48,
   paddingHorizontal = 24,
   spacingLogoToHero = 20,
   spacingHeroToTitle = 24,
   spacingTitleToSubtitle = 8,
+  // Outer container (wrapper)
+  outerBackgroundColor = 'transparent',
+  outerPaddingTop = 0,
+  outerPaddingRight = 0,
+  outerPaddingBottom = 0,
+  outerPaddingLeft = 0,
+  borderRadius = 0,
   // Edit mode
   isEditing = false,
   onSpacingChange,
@@ -185,6 +192,20 @@ function HeaderSection({
     bottom: 'flex-end'
   };
 
+  // Check if we have outer padding/wrapper
+  const hasOuterWrapper = outerBackgroundColor !== 'transparent' || 
+    outerPaddingTop > 0 || outerPaddingRight > 0 || 
+    outerPaddingBottom > 0 || outerPaddingLeft > 0 ||
+    borderRadius > 0;
+
+  const outerWrapperStyle = hasOuterWrapper ? {
+    backgroundColor: outerBackgroundColor,
+    paddingTop: `${outerPaddingTop}px`,
+    paddingRight: `${outerPaddingRight}px`,
+    paddingBottom: `${outerPaddingBottom}px`,
+    paddingLeft: `${outerPaddingLeft}px`
+  } : {};
+
   const headerStyle = {
     ...backgroundStyle,
     paddingLeft: `${paddingHorizontal}px`,
@@ -196,7 +217,8 @@ function HeaderSection({
     minHeight: minHeight ? `${minHeight}px` : undefined,
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: alignMap[verticalAlign] || 'center'
+    justifyContent: alignMap[verticalAlign] || 'center',
+    borderRadius: borderRadius > 0 ? `${borderRadius}px` : undefined
   };
 
   const logoContainerStyle = {
@@ -272,7 +294,7 @@ function HeaderSection({
   const hasSubtitle = subtitle && subtitle.trim().length > 0;
   const hasAnyContent = logo || showHero || hasTitle || hasSubtitle;
 
-  return (
+  const headerContent = (
     <div style={headerStyle}>
       {/* Background overlay */}
       {backgroundType === 'image' && backgroundImage && overlayOpacity > 0 && (
@@ -282,7 +304,8 @@ function HeaderSection({
             inset: 0,
             backgroundColor: overlayColor,
             opacity: overlayOpacity / 100,
-            zIndex: 1
+            zIndex: 1,
+            borderRadius: borderRadius > 0 ? `${borderRadius}px` : undefined
           }}
         />
       )}
@@ -405,6 +428,17 @@ function HeaderSection({
       </div>
     </div>
   );
+
+  // If we have outer wrapper settings, wrap the content
+  if (hasOuterWrapper) {
+    return (
+      <div style={outerWrapperStyle}>
+        {headerContent}
+      </div>
+    );
+  }
+
+  return headerContent;
 }
 
 export default HeaderSection;

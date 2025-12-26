@@ -781,10 +781,86 @@ function SectionActionBar({
         return renderAlternatingControls();
       case 'promoCard':
         return renderPromoCardControls();
+      case 'styledTitle':
+        return renderStyledTitleControls();
       default:
         return renderDefaultControls();
     }
   };
+
+  // Outer Wrapper Controls (for card-style sections with outer padding and border radius)
+  const renderOuterWrapperControls = () => (
+    <ActionGroup label="Outer Frame" icon={Layers} expanded={expanded.outerFrame} onToggle={() => toggleExpand('outerFrame')}>
+      <div className="space-y-3">
+        {/* Outer Background Color */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-400 w-16">Outer Bg</span>
+          <div className="flex items-center gap-1 flex-1">
+            <input 
+              type="color" 
+              value={section.outerBackgroundColor === 'transparent' ? '#f5f5f5' : section.outerBackgroundColor} 
+              onChange={(e) => onUpdate({ outerBackgroundColor: e.target.value })} 
+              className="w-6 h-6 rounded cursor-pointer"
+            />
+            <Button
+              variant={section.outerBackgroundColor === 'transparent' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onUpdate({ outerBackgroundColor: 'transparent' })}
+              className="h-6 px-2 text-[10px]"
+            >
+              None
+            </Button>
+          </div>
+        </div>
+        
+        {/* Border Radius */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-400 w-16">Radius</span>
+          <NumberStepper value={section.borderRadius || 0} onChange={(v) => onUpdate({ borderRadius: v })} min={0} max={48} suffix="px" />
+        </div>
+        
+        {/* Outer Padding */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] text-zinc-400">Outer Padding</span>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-zinc-300 w-4">T</span>
+              <NumberStepper value={section.outerPaddingTop || 0} onChange={(v) => onUpdate({ outerPaddingTop: v })} min={0} max={80} suffix="px" />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-zinc-300 w-4">R</span>
+              <NumberStepper value={section.outerPaddingRight || 0} onChange={(v) => onUpdate({ outerPaddingRight: v })} min={0} max={80} suffix="px" />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-zinc-300 w-4">B</span>
+              <NumberStepper value={section.outerPaddingBottom || 0} onChange={(v) => onUpdate({ outerPaddingBottom: v })} min={0} max={80} suffix="px" />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-zinc-300 w-4">L</span>
+              <NumberStepper value={section.outerPaddingLeft || 0} onChange={(v) => onUpdate({ outerPaddingLeft: v })} min={0} max={80} suffix="px" />
+            </div>
+          </div>
+          {/* Quick link all edges */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const val = section.outerPaddingTop || 16;
+              onUpdate({ 
+                outerPaddingTop: val, 
+                outerPaddingRight: val, 
+                outerPaddingBottom: val, 
+                outerPaddingLeft: val 
+              });
+            }}
+            className="w-full h-6 text-[10px]"
+          >
+            Set All Edges to {section.outerPaddingTop || 16}px
+          </Button>
+        </div>
+      </div>
+    </ActionGroup>
+  );
 
   const renderHeaderControls = () => (
     <>
@@ -1512,6 +1588,9 @@ function SectionActionBar({
 
       {/* Background */}
       {renderBackgroundControls()}
+
+      {/* Outer Frame (card style) */}
+      {renderOuterWrapperControls()}
 
       {/* Divider */}
       {renderDividerControls()}
@@ -4830,6 +4909,361 @@ function SectionActionBar({
       {renderBackgroundControls()}
     </>
   );
+
+  const renderStyledTitleControls = () => {
+    const segments = section.segments || [];
+    
+    return (
+      <>
+        {/* Title Segments */}
+        <ActionGroup label="Title Segments" icon={Type} expanded={expanded.typography} onToggle={() => toggleExpand('typography')}>
+          <div className="space-y-3">
+            {segments.map((segment, index) => (
+              <div key={segment.id} className="p-2 bg-zinc-50 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-zinc-500">Segment {index + 1}</span>
+                  {segments.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newSegments = segments.filter((_, i) => i !== index);
+                        onUpdate({ segments: newSegments });
+                      }}
+                      className="h-5 w-5 p-0 text-red-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Text */}
+                <input
+                  type="text"
+                  value={segment.text}
+                  onChange={(e) => {
+                    const newSegments = [...segments];
+                    newSegments[index] = { ...segment, text: e.target.value };
+                    onUpdate({ segments: newSegments });
+                  }}
+                  className="w-full h-7 text-xs rounded border border-zinc-200 px-2"
+                  placeholder="Text..."
+                />
+                
+                {/* Font Weight */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-14">Weight</span>
+                  <select
+                    value={segment.fontWeight || '400'}
+                    onChange={(e) => {
+                      const newSegments = [...segments];
+                      newSegments[index] = { ...segment, fontWeight: e.target.value };
+                      onUpdate({ segments: newSegments });
+                    }}
+                    className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+                  >
+                    <option value="100">Thin (100)</option>
+                    <option value="200">ExtraLight (200)</option>
+                    <option value="300">Light (300)</option>
+                    <option value="400">Regular (400)</option>
+                    <option value="500">Medium (500)</option>
+                    <option value="600">SemiBold (600)</option>
+                    <option value="700">Bold (700)</option>
+                    <option value="800">ExtraBold (800)</option>
+                    <option value="900">Black (900)</option>
+                  </select>
+                </div>
+                
+                {/* Font Style */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-14">Style</span>
+                  <div className="flex gap-1">
+                    <Button
+                      variant={segment.fontStyle === 'normal' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        const newSegments = [...segments];
+                        newSegments[index] = { ...segment, fontStyle: 'normal' };
+                        onUpdate({ segments: newSegments });
+                      }}
+                      className="h-6 px-2 text-[10px]"
+                    >
+                      Normal
+                    </Button>
+                    <Button
+                      variant={segment.fontStyle === 'italic' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        const newSegments = [...segments];
+                        newSegments[index] = { ...segment, fontStyle: 'italic' };
+                        onUpdate({ segments: newSegments });
+                      }}
+                      className="h-6 px-2 text-[10px] italic"
+                    >
+                      Italic
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Segment Color */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-14">Color</span>
+                  <input
+                    type="color"
+                    value={segment.color || '#FFFFFF'}
+                    onChange={(e) => {
+                      const newSegments = [...segments];
+                      newSegments[index] = { ...segment, color: e.target.value };
+                      onUpdate({ segments: newSegments });
+                    }}
+                    className="w-6 h-6 rounded cursor-pointer"
+                  />
+                </div>
+              </div>
+            ))}
+            
+            {/* Add Segment Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const newSegment = {
+                  id: `seg-${Date.now()}`,
+                  text: 'Text',
+                  fontWeight: '400',
+                  fontStyle: 'normal',
+                  color: '#FFFFFF'
+                };
+                onUpdate({ segments: [...segments, newSegment] });
+              }}
+              className="w-full h-7 text-xs"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Segment
+            </Button>
+          </div>
+        </ActionGroup>
+
+        {/* Global Title Settings */}
+        <ActionGroup label="Title Settings" icon={Type} expanded={expanded.titleSettings} onToggle={() => toggleExpand('titleSettings')}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-16">Font</span>
+              <select
+                value={section.fontFamily || 'Poppins'}
+                onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+                className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+              >
+                <option value="Poppins">Poppins</option>
+                <option value="Inter">Inter</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Noto Sans Hebrew">Noto Sans Hebrew</option>
+                <option value="Playfair Display">Playfair Display</option>
+                <option value="Bebas Neue">Bebas Neue</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-16">Size</span>
+              <NumberStepper value={section.fontSize || 72} onChange={(v) => onUpdate({ fontSize: v })} min={24} max={150} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-16">Spacing</span>
+              <select
+                value={section.letterSpacing || '-0.02em'}
+                onChange={(e) => onUpdate({ letterSpacing: e.target.value })}
+                className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+              >
+                <option value="-0.05em">Tight (-0.05em)</option>
+                <option value="-0.02em">Normal (-0.02em)</option>
+                <option value="0">None (0)</option>
+                <option value="0.02em">Wide (0.02em)</option>
+                <option value="0.05em">Extra Wide (0.05em)</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-16">Line H</span>
+              <NumberStepper value={section.lineHeight || 1.1} onChange={(v) => onUpdate({ lineHeight: v })} min={0.8} max={2} step={0.05} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-16">Align</span>
+              <div className="flex gap-1 flex-1">
+                <Button
+                  variant={section.textAlign === 'left' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate({ textAlign: 'left' })}
+                  className="h-6 w-6 p-0"
+                >
+                  <AlignLeft className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant={section.textAlign === 'center' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate({ textAlign: 'center' })}
+                  className="h-6 w-6 p-0"
+                >
+                  <AlignCenter className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant={section.textAlign === 'right' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate({ textAlign: 'right' })}
+                  className="h-6 w-6 p-0"
+                >
+                  <AlignRight className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </ActionGroup>
+
+        {/* Logo */}
+        <ActionGroup label="Logo" icon={ImageIcon} expanded={expanded.logo} onToggle={() => toggleExpand('logo')}>
+          <div className="space-y-2">
+            {section.logo ? (
+              <div className="relative w-full h-16 bg-zinc-100 rounded-lg overflow-hidden">
+                <img src={section.logo} alt="Logo" className="w-full h-full object-contain" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onUpdate({ logo: null })}
+                  className="absolute top-1 right-1 h-5 w-5 p-0 bg-white/80 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3 text-red-500" />
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center p-3 bg-zinc-50 rounded-lg border-2 border-dashed border-zinc-200">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => onUpdate({ logo: ev.target.result });
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                  id="styled-title-logo-upload"
+                />
+                <label htmlFor="styled-title-logo-upload" className="cursor-pointer text-xs text-zinc-500">
+                  Click to upload logo
+                </label>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Width</span>
+              <NumberStepper value={section.logoWidth || 120} onChange={(v) => onUpdate({ logoWidth: v })} min={40} max={300} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Align</span>
+              <div className="flex gap-1 flex-1">
+                <Button
+                  variant={section.logoAlignment === 'left' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate({ logoAlignment: 'left' })}
+                  className="h-6 w-6 p-0"
+                >
+                  <AlignLeft className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant={section.logoAlignment === 'center' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate({ logoAlignment: 'center' })}
+                  className="h-6 w-6 p-0"
+                >
+                  <AlignCenter className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant={section.logoAlignment === 'right' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate({ logoAlignment: 'right' })}
+                  className="h-6 w-6 p-0"
+                >
+                  <AlignRight className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </ActionGroup>
+
+        {/* Subtitle */}
+        <ActionGroup label="Subtitle" icon={Type} expanded={expanded.subtitle} onToggle={() => toggleExpand('subtitle')}>
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={section.subtitle || ''}
+              onChange={(e) => onUpdate({ subtitle: e.target.value })}
+              className="w-full h-7 text-xs rounded border border-zinc-200 px-2"
+              placeholder="Optional subtitle..."
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Size</span>
+              <NumberStepper value={section.subtitleFontSize || 18} onChange={(v) => onUpdate({ subtitleFontSize: v })} min={12} max={36} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Weight</span>
+              <select
+                value={section.subtitleFontWeight || '400'}
+                onChange={(e) => onUpdate({ subtitleFontWeight: e.target.value })}
+                className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+              >
+                <option value="300">Light</option>
+                <option value="400">Regular</option>
+                <option value="500">Medium</option>
+                <option value="600">SemiBold</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Color</span>
+              <input
+                type="color"
+                value={section.subtitleColor || '#FFFFFF'}
+                onChange={(e) => onUpdate({ subtitleColor: e.target.value })}
+                className="w-6 h-6 rounded cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Opacity</span>
+              <NumberStepper value={section.subtitleOpacity || 0.8} onChange={(v) => onUpdate({ subtitleOpacity: v })} min={0.1} max={1} step={0.1} />
+            </div>
+          </div>
+        </ActionGroup>
+
+        {/* Spacing */}
+        <ActionGroup label="Spacing" icon={Move} expanded={expanded.spacing} onToggle={() => toggleExpand('spacing')}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Pad Top</span>
+              <NumberStepper value={section.paddingTop || 48} onChange={(v) => onUpdate({ paddingTop: v })} min={0} max={120} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Pad Bottom</span>
+              <NumberStepper value={section.paddingBottom || 48} onChange={(v) => onUpdate({ paddingBottom: v })} min={0} max={120} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Pad H</span>
+              <NumberStepper value={section.paddingHorizontal || 24} onChange={(v) => onUpdate({ paddingHorizontal: v })} min={0} max={80} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Logo → Title</span>
+              <NumberStepper value={section.spacingLogoToTitle || 24} onChange={(v) => onUpdate({ spacingLogoToTitle: v })} min={0} max={80} suffix="px" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Title → Sub</span>
+              <NumberStepper value={section.spacingTitleToSubtitle || 16} onChange={(v) => onUpdate({ spacingTitleToSubtitle: v })} min={0} max={60} suffix="px" />
+            </div>
+          </div>
+        </ActionGroup>
+
+        {renderTextDirectionControls()}
+        {renderBackgroundControls()}
+        {renderOuterWrapperControls()}
+      </>
+    );
+  };
 
   const renderDefaultControls = () => (
     <>

@@ -41,6 +41,8 @@ export function exportToHTML(newsletter) {
     switch (section.type) {
       case 'header':
         return exportHeader(section);
+      case 'styledTitle':
+        return exportStyledTitle(section);
       case 'marquee':
         return exportMarquee(section);
       case 'text':
@@ -137,6 +139,8 @@ export function exportForGmail(newsletter) {
     switch (section.type) {
       case 'header':
         return exportHeader(section);
+      case 'styledTitle':
+        return exportStyledTitle(section);
       case 'marquee':
         return exportMarquee(section);
       case 'text':
@@ -227,6 +231,56 @@ function exportHeader(section) {
       </td>
     </tr>
     ${badgeRow}`;
+}
+
+function exportStyledTitle(section) {
+  const bgStyle = section.gradientEnd 
+    ? `background: linear-gradient(180deg, ${section.backgroundColor || '#7B68EE'} 0%, ${section.gradientEnd || '#9370DB'} 100%); background-color: ${section.backgroundColor || '#7B68EE'};`
+    : `background-color: ${section.backgroundColor || '#7B68EE'};`;
+
+  const segments = section.segments || [];
+  const fontSize = section.fontSize || 72;
+  const letterSpacing = section.letterSpacing || '-0.02em';
+  const lineHeight = section.lineHeight || 1.1;
+  const textAlign = section.textAlign || 'center';
+  const fontFamily = section.fontFamily || 'Poppins';
+  const fontStack = FONT_STACKS[fontFamily] || FONT_STACKS['Poppins'];
+
+  // Build segments HTML
+  const segmentsHtml = segments.map(seg => {
+    return `<span style="font-weight: ${seg.fontWeight || '400'}; font-style: ${seg.fontStyle || 'normal'}; color: ${seg.color || '#FFFFFF'};">${seg.text}</span>`;
+  }).join('');
+
+  const titleHtml = `
+    <div style="font-size: ${fontSize}px; letter-spacing: ${letterSpacing}; line-height: ${lineHeight}; font-family: ${fontStack}; text-align: ${textAlign};">
+      ${segmentsHtml}
+    </div>`;
+
+  // Logo
+  const logoWidth = section.logoWidth || 120;
+  const logoAlignment = section.logoAlignment || 'center';
+  const logoMargin = logoAlignment === 'left' ? '0 auto 24px 0' : 
+                     logoAlignment === 'right' ? '0 0 24px auto' : '0 auto 24px';
+
+  const logoHtml = section.logo ? `
+    <img src="${section.logo}" alt="Logo" style="width: ${logoWidth}px; height: auto; max-width: 100%; display: block; margin: ${logoMargin}; object-fit: contain;" />
+  ` : '';
+
+  // Subtitle
+  const subtitleHtml = section.subtitle ? `
+    <p style="margin: ${section.spacingTitleToSubtitle || 16}px 0 0; font-size: ${section.subtitleFontSize || 18}px; font-weight: ${section.subtitleFontWeight || '400'}; opacity: ${section.subtitleOpacity || 0.8}; font-family: ${fontStack}; line-height: 1.4; color: ${section.subtitleColor || '#FFFFFF'};">
+      ${section.subtitle}
+    </p>
+  ` : '';
+
+  return `
+    <tr>
+      <td style="${bgStyle} padding: ${section.paddingTop || 48}px ${section.paddingHorizontal || 24}px ${section.paddingBottom || 48}px; text-align: ${textAlign};">
+        ${logoHtml}
+        ${titleHtml}
+        ${subtitleHtml}
+      </td>
+    </tr>`;
 }
 
 function exportMarquee(section) {

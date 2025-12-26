@@ -1485,7 +1485,52 @@ function getDefaultSectionData(sectionType) {
       paddingHorizontal: 24,
       spacingLogoToHero: 20,
       spacingHeroToTitle: 24,
-      spacingTitleToSubtitle: 8
+      spacingTitleToSubtitle: 8,
+      // Outer wrapper
+      outerBackgroundColor: 'transparent',
+      outerPaddingTop: 0,
+      outerPaddingRight: 0,
+      outerPaddingBottom: 0,
+      outerPaddingLeft: 0,
+      borderRadius: 0
+    },
+    styledTitle: {
+      backgroundColor: '#7B68EE',
+      gradientEnd: '#9370DB',
+      backgroundType: 'gradient',
+      backgroundImage: null,
+      overlayColor: '#000000',
+      overlayOpacity: 0,
+      logo: null,
+      logoWidth: 120,
+      logoAlignment: 'center',
+      segments: [
+        { id: '1', text: 'Electreo', fontWeight: '700', fontStyle: 'normal', color: '#FFFFFF' },
+        { id: '2', text: 'News', fontWeight: '300', fontStyle: 'italic', color: '#FFFFFF' }
+      ],
+      fontSize: 72,
+      letterSpacing: '-0.02em',
+      lineHeight: 1.1,
+      textAlign: 'center',
+      fontFamily: 'Poppins',
+      subtitle: '',
+      subtitleFontSize: 18,
+      subtitleFontWeight: '400',
+      subtitleColor: '#FFFFFF',
+      subtitleOpacity: 0.8,
+      paddingTop: 48,
+      paddingBottom: 48,
+      paddingHorizontal: 24,
+      spacingLogoToTitle: 24,
+      spacingTitleToSubtitle: 16,
+      textDirection: 'ltr',
+      // Outer wrapper
+      outerBackgroundColor: 'transparent',
+      outerPaddingTop: 0,
+      outerPaddingRight: 0,
+      outerPaddingBottom: 0,
+      outerPaddingLeft: 0,
+      borderRadius: 0
     },
     marquee: {
       items: '🎉 New Announcement,⭐ Special Offer,🚀 Coming Soon,💡 Did You Know',

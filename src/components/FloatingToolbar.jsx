@@ -28,7 +28,8 @@ import {
   AppWindow,
   PanelsTopLeft,
   Megaphone,
-  AlignRight
+  AlignRight,
+  Sparkles
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
@@ -48,6 +49,7 @@ const basicSectionTypes = [
 
 // Layout section types (in submenu)
 const layoutSectionTypes = [
+  { type: 'styledTitle', label: 'Styled Title', icon: Sparkles, description: 'Multi-weight title like ElectreoNews' },
   { type: 'stats', label: 'Stats', icon: Hash, description: 'Numbers grid with labels' },
   { type: 'featureGrid', label: 'Features', icon: Grid3X3, description: 'Image with feature bullets' },
   { type: 'specsTable', label: 'Specs Table', icon: Table, description: 'Key-value pairs table' },
