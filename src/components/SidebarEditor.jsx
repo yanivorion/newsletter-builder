@@ -296,8 +296,202 @@ function SidebarEditor({
     </div>
   );
 
+  // Container settings handler
+  const handleContainerChange = useCallback((field, value) => {
+    const currentContainer = section?.container || {};
+    onSectionUpdate(selectedSection, { 
+      container: { ...currentContainer, [field]: value } 
+    });
+  }, [selectedSection, onSectionUpdate, section?.container]);
+
+  // Container Settings Component
+  const renderContainerSettings = () => {
+    const container = section?.container || {};
+    const [isExpanded, setIsExpanded] = React.useState(false);
+    
+    return (
+      <div className="mb-6 p-3 bg-gradient-to-br from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center justify-between text-xs font-semibold text-zinc-600 hover:text-zinc-900"
+        >
+          <div className="flex items-center gap-2">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Container Frame</span>
+          </div>
+          <ChevronDown className={cn("w-4 h-4 transition-transform", isExpanded && "rotate-180")} />
+        </button>
+        
+        {isExpanded && (
+          <div className="mt-4 space-y-4">
+            {/* Outer Container (Padding/Margin) */}
+            <div className="space-y-2">
+              <span className="text-[10px] text-zinc-500 font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-sm bg-zinc-400"></span>
+                Outer Frame (Padding)
+              </span>
+              <div className="grid grid-cols-4 gap-1.5">
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Top</span>
+                  <NumberInput
+                    value={container.outerPaddingTop ?? container.outerPadding ?? 0}
+                    onChange={(val) => handleContainerChange('outerPaddingTop', val)}
+                    step={4}
+                    suffix=""
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Bottom</span>
+                  <NumberInput
+                    value={container.outerPaddingBottom ?? container.outerPadding ?? 0}
+                    onChange={(val) => handleContainerChange('outerPaddingBottom', val)}
+                    step={4}
+                    suffix=""
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Left</span>
+                  <NumberInput
+                    value={container.outerPaddingLeft ?? container.outerPadding ?? 0}
+                    onChange={(val) => handleContainerChange('outerPaddingLeft', val)}
+                    step={4}
+                    suffix=""
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Right</span>
+                  <NumberInput
+                    value={container.outerPaddingRight ?? container.outerPadding ?? 0}
+                    onChange={(val) => handleContainerChange('outerPaddingRight', val)}
+                    step={4}
+                    suffix=""
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-400">Outer Background</span>
+                <ImageColorPicker
+                  value={container.outerBackgroundColor || ''}
+                  onChange={(val) => handleContainerChange('outerBackgroundColor', val)}
+                  placeholder="#FDFBF8"
+                  allowClear
+                />
+              </div>
+            </div>
+            
+            {/* Inner Container (Border/Radius/Background) */}
+            <div className="space-y-2 pt-3 border-t border-zinc-200">
+              <span className="text-[10px] text-zinc-500 font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-sm border-2 border-zinc-400"></span>
+                Inner Frame (Stroke & Radius)
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Border Width</span>
+                  <NumberInput
+                    value={container.innerBorderWidth ?? 0}
+                    onChange={(val) => handleContainerChange('innerBorderWidth', val)}
+                    step={1}
+                    suffix="px"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Border Radius</span>
+                  <NumberInput
+                    value={container.innerBorderRadius ?? 0}
+                    onChange={(val) => handleContainerChange('innerBorderRadius', val)}
+                    step={4}
+                    suffix="px"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-400">Border Color</span>
+                <ImageColorPicker
+                  value={container.innerBorderColor || '#E5E5E5'}
+                  onChange={(val) => handleContainerChange('innerBorderColor', val)}
+                  placeholder="#E5E5E5"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-400">Inner Background</span>
+                <ImageColorPicker
+                  value={container.innerBackgroundColor || ''}
+                  onChange={(val) => handleContainerChange('innerBackgroundColor', val)}
+                  placeholder="transparent"
+                  allowClear
+                />
+              </div>
+            </div>
+            
+            {/* Background Image */}
+            <div className="space-y-2 pt-3 border-t border-zinc-200">
+              <span className="text-[10px] text-zinc-500 font-medium flex items-center gap-1">
+                <Image className="w-3 h-3" />
+                Background Image
+              </span>
+              <ImageUploader
+                currentImage={container.backgroundImage}
+                onImageUpload={(file) => {
+                  const reader = new FileReader();
+                  reader.onload = (e) => handleContainerChange('backgroundImage', e.target.result);
+                  reader.readAsDataURL(file);
+                }}
+                onRemoveBackground={() => {}}
+                isProcessing={false}
+                compact
+              />
+              {container.backgroundImage && (
+                <>
+                  <button
+                    onClick={() => handleContainerChange('backgroundImage', null)}
+                    className="w-full h-7 text-[10px] text-zinc-500 hover:text-red-500 border border-zinc-200 rounded transition-colors"
+                  >
+                    Remove Background Image
+                  </button>
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-zinc-400">Position</span>
+                    <Select
+                      value={container.backgroundPosition || 'center'}
+                      onChange={(e) => handleContainerChange('backgroundPosition', e.target.value)}
+                      className="h-8 text-xs"
+                    >
+                      <option value="center">Center</option>
+                      <option value="top">Top</option>
+                      <option value="bottom">Bottom</option>
+                      <option value="left">Left</option>
+                      <option value="right">Right</option>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-zinc-400">Repeat</span>
+                    <Select
+                      value={container.backgroundRepeat || 'no-repeat'}
+                      onChange={(e) => handleContainerChange('backgroundRepeat', e.target.value)}
+                      className="h-8 text-xs"
+                    >
+                      <option value="no-repeat">No Repeat</option>
+                      <option value="repeat">Repeat</option>
+                      <option value="repeat-x">Repeat X</option>
+                      <option value="repeat-y">Repeat Y</option>
+                    </Select>
+                  </div>
+                </>
+              )}
+              <p className="text-[9px] text-zinc-400">
+                Background fills 100% width, auto height
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderHeaderEditor = () => (
     <div className="space-y-6">
+      {renderContainerSettings()}
+      
       {/* Logo Section */}
       <FieldGroup label="Logo">
         <ImageUploader
@@ -693,6 +887,8 @@ function SidebarEditor({
 
   const renderTextEditor = () => (
     <div className="space-y-6">
+      {renderContainerSettings()}
+      
       <FieldGroup label="Content">
         <EditableTextarea
           value={section.content || ''}
@@ -772,6 +968,8 @@ function SidebarEditor({
 
   const renderSectionHeaderEditor = () => (
     <div className="space-y-6">
+      {renderContainerSettings()}
+      
       <FieldGroup label="Text">
         <EditableInput
           value={section.text || ''}
@@ -830,6 +1028,8 @@ function SidebarEditor({
     
     return (
       <div className="space-y-6">
+        {renderContainerSettings()}
+        
         <FieldGroup label="Layout Preset">
           <CollagePresetPicker
             currentPreset={currentPreset}
@@ -1032,6 +1232,8 @@ function SidebarEditor({
 
     return (
       <div className="space-y-6">
+        {renderContainerSettings()}
+        
         <FieldGroup label="Upload Images">
           <div 
             className="border-2 border-dashed border-zinc-200 rounded-xl p-6 text-center hover:border-[#04D1FC] transition-colors cursor-pointer"
@@ -1228,6 +1430,8 @@ function SidebarEditor({
     
     return (
       <div className="space-y-6">
+        {renderContainerSettings()}
+        
         <div className="grid grid-cols-2 gap-3">
           <FieldGroup label="Columns">
             <Select
@@ -1333,6 +1537,8 @@ function SidebarEditor({
 
   const renderRecipeEditor = () => (
     <div className="space-y-6">
+      {renderContainerSettings()}
+      
       <FieldGroup label="Recipe Title">
         <EditableInput
           value={section.title || ''}
@@ -1377,6 +1583,8 @@ function SidebarEditor({
 
   const renderFooterEditor = () => (
     <div className="space-y-6">
+      {renderContainerSettings()}
+      
       <FieldGroup label="Text">
         <EditableTextarea
           value={section.text || ''}
@@ -1430,6 +1638,8 @@ function SidebarEditor({
 
     return (
     <div className="space-y-6">
+      {renderContainerSettings()}
+      
       <FieldGroup label="Content">
         <EditableTextarea
           value={section.items || ''}

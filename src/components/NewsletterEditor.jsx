@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
+import SectionWrapper from './SectionWrapper';
 import HeaderSection from './sections/HeaderSection';
 import TextSection from './sections/TextSection';
 import SectionHeaderSection from './sections/SectionHeaderSection';
@@ -166,13 +167,29 @@ function NewsletterEditor({
           </div>
         )}
 
-        <SectionComponent 
-          {...section} 
-          isEditing={isSelected && section.type === 'header'}
-          onSpacingChange={section.type === 'header' ? (field, value) => {
-            onSectionUpdate?.(section.id, { [field]: value });
-          } : undefined}
-        />
+        <SectionWrapper
+          outerPadding={section.container?.outerPadding || 0}
+          outerPaddingTop={section.container?.outerPaddingTop}
+          outerPaddingBottom={section.container?.outerPaddingBottom}
+          outerPaddingLeft={section.container?.outerPaddingLeft}
+          outerPaddingRight={section.container?.outerPaddingRight}
+          outerBackgroundColor={section.container?.outerBackgroundColor || 'transparent'}
+          innerBorderWidth={section.container?.innerBorderWidth || 0}
+          innerBorderColor={section.container?.innerBorderColor || '#E5E5E5'}
+          innerBorderRadius={section.container?.innerBorderRadius || 0}
+          innerBackgroundColor={section.container?.innerBackgroundColor || 'transparent'}
+          backgroundImage={section.container?.backgroundImage || null}
+          backgroundPosition={section.container?.backgroundPosition || 'center'}
+          backgroundRepeat={section.container?.backgroundRepeat || 'no-repeat'}
+        >
+          <SectionComponent 
+            {...section} 
+            isEditing={isSelected && section.type === 'header'}
+            onSpacingChange={section.type === 'header' ? (field, value) => {
+              onSectionUpdate?.(section.id, { [field]: value });
+            } : undefined}
+          />
+        </SectionWrapper>
         
         {/* Selection indicator */}
         {isSelected && !isUnlocked && (
