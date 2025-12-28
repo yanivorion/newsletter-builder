@@ -1,103 +1,36 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { ImageIcon, Upload } from 'lucide-react';
+import React from 'react';
 
-// Font stacks mapping
-const FONT_STACKS = {
-  'Noto Sans Hebrew': "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif",
-  'Poppins': "'Poppins', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-  'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-  'Assistant': "'Assistant', 'Arial Hebrew', Arial, sans-serif",
-  'Heebo': "'Heebo', 'Arial Hebrew', Arial, sans-serif"
-};
-
-function RecipeSection({ 
-  title, 
-  image, 
-  ingredients, 
-  instructions, 
-  backgroundColor, 
-  backgroundImage, 
-  backgroundType = 'solid',
-  gradientEnd,
-  overlayColor, 
-  overlayOpacity,
-  minHeight,
-  imageHeight = 200,
-  imageFit = 'cover',
-  fontFamily = 'Noto Sans Hebrew',
-  // Inline editing props
-  isSelected = false,
-  onTitleChange,
-  onIngredientsChange,
-  onInstructionsChange
-}) {
-  const fontStack = FONT_STACKS[fontFamily] || FONT_STACKS['Noto Sans Hebrew'];
-  const titleRef = useRef(null);
-  const [editingField, setEditingField] = useState(null);
-
-  // Determine background style
-  let backgroundStyle = {};
-  if (backgroundType === 'image' && backgroundImage) {
-    backgroundStyle = {
-      backgroundImage: `url(${backgroundImage})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center'
-    };
-  } else if (backgroundType === 'gradient' && gradientEnd) {
-    backgroundStyle = {
-      background: `linear-gradient(135deg, ${backgroundColor || '#FFFFFF'} 0%, ${gradientEnd} 100%)`
-    };
-  } else {
-    backgroundStyle = {
-      backgroundColor: backgroundColor || '#FFFFFF'
-    };
-  }
-
+function RecipeSection({ title, image, ingredients, instructions, backgroundColor }) {
   const containerStyle = {
-    ...backgroundStyle,
-    padding: '30px 20px',
-    position: 'relative',
-    overflow: 'hidden',
-    minHeight: minHeight ? `${minHeight}px` : undefined
+    backgroundColor: backgroundColor || '#FFFFFF',
+    padding: '30px 20px'
   };
 
   const contentStyle = {
     maxWidth: '500px',
-    margin: '0 auto',
-    position: 'relative',
-    zIndex: 2
+    margin: '0 auto'
   };
 
-  // Check if content exists
-  const hasTitle = title && title.trim().length > 0;
-  const hasImage = image && image.trim && image.trim().length > 0;
-  const hasIngredients = ingredients && ingredients.trim().length > 0;
-  const hasInstructions = instructions && instructions.trim().length > 0;
-  const hasContentAfterTitle = hasImage || hasIngredients || hasInstructions;
-  const hasContentAfterImage = hasIngredients || hasInstructions;
-  const hasContentAfterIngredients = hasInstructions;
-
   const titleStyle = {
-    fontFamily: fontStack,
+    fontFamily: 'Noto Sans Hebrew, sans-serif',
     fontSize: '24px',
     fontWeight: '600',
     color: '#333333',
     textAlign: 'center',
-    marginBottom: hasContentAfterTitle ? '20px' : 0,
+    marginBottom: '20px',
     direction: 'rtl'
   };
 
   const imageContainerStyle = {
     width: '100%',
-    height: `${imageHeight}px`,
-    marginBottom: hasContentAfterImage ? '20px' : 0,
+    height: '250px',
+    marginBottom: '20px',
     borderRadius: '8px',
-    overflow: 'hidden',
-    position: 'relative'
+    overflow: 'hidden'
   };
 
   const textBlockStyle = {
-    fontFamily: fontStack,
+    fontFamily: 'Noto Sans Hebrew, sans-serif',
     fontSize: '14px',
     color: '#333333',
     lineHeight: '1.8',
@@ -107,38 +40,11 @@ function RecipeSection({
     whiteSpace: 'pre-wrap'
   };
 
-  const placeholderStyle = {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#F4F4F5',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#A1A1AA',
-    border: '2px dashed #E4E4E7',
-    borderRadius: '8px'
-  };
-
   return (
     <div style={containerStyle}>
-      {/* Background overlay */}
-      {backgroundImage && overlayOpacity > 0 && (
-        <div 
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: overlayColor || '#000000',
-            opacity: (overlayOpacity || 0) / 100,
-            zIndex: 1
-          }}
-        />
-      )}
-      
       <div style={contentStyle}>
-        {hasTitle && <h2 style={titleStyle}>{title}</h2>}
+        <h2 style={titleStyle}>{title || 'מתכון חודשי'}</h2>
         
-        {(hasImage || isSelected) && (
         <div style={imageContainerStyle}>
           {image ? (
             <img 
@@ -147,29 +53,34 @@ function RecipeSection({
               style={{ 
                 width: '100%', 
                 height: '100%', 
-                  objectFit: imageFit 
+                objectFit: 'cover' 
               }} 
             />
-            ) : isSelected ? (
-              <div style={placeholderStyle}>
-                <ImageIcon size={48} strokeWidth={1} />
-                <span style={{ marginTop: '8px', fontSize: '14px' }}>Click to add recipe image</span>
-              </div>
-            ) : null}
+          ) : (
+            <div 
+              style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: '#E0E0E0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#999999',
+                fontSize: '48px'
+              }}
+            >
+              🍽️
             </div>
           )}
-
-        {hasIngredients && (
-          <div style={{ ...textBlockStyle, marginBottom: hasContentAfterIngredients ? '15px' : 0 }}>
-            {ingredients}
         </div>
-        )}
 
-        {hasInstructions && (
-          <div style={{ ...textBlockStyle, marginBottom: 0 }}>
-            {instructions}
+        <div style={textBlockStyle}>
+          {ingredients || 'רכיבים:\n- מצרך 1\n- מצרך 2\n- מצרך 3'}
         </div>
-        )}
+
+        <div style={textBlockStyle}>
+          {instructions || 'הוראות הכנה:\n1. שלב ראשון\n2. שלב שני\n3. שלב שלישי'}
+        </div>
       </div>
     </div>
   );

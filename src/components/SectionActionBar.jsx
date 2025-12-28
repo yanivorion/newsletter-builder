@@ -1236,34 +1236,7 @@ function SectionActionBar({
             />
           </div>
           
-          {/* Size Controls */}
-          {(section.heroImage || section.showHeroPlaceholder) && (
-            <div className="space-y-2 pt-2 border-t border-zinc-100">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-zinc-400 w-12">Height</span>
-                <NumberStepper
-                  value={section.heroImageHeight || 200}
-                  onChange={(v) => onUpdate({ heroImageHeight: v })}
-                  min={100}
-                  max={600}
-                  step={20}
-                  suffix="px"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-zinc-400 w-12">Fit</span>
-                <select
-                  value={section.heroImageFit || 'cover'}
-                  onChange={(e) => onUpdate({ heroImageFit: e.target.value })}
-                  className="flex-1 h-7 px-2 text-xs rounded border border-zinc-200"
-                >
-                  <option value="cover">Cover</option>
-                  <option value="contain">Contain</option>
-                  <option value="fill">Fill</option>
-                </select>
-              </div>
-            </div>
-          )}
+          {/* Image always uses contain fit, height is auto */}
         </div>
       </ActionGroup>
 
@@ -1809,14 +1782,8 @@ function SectionActionBar({
         </div>
       </ActionGroup>
 
-      {/* Background */}
-      {renderBackgroundControls()}
-
       {/* Outer Frame (card style) */}
       {renderOuterWrapperControls()}
-
-      {/* Divider */}
-      {renderDividerControls()}
     </>
   );
 

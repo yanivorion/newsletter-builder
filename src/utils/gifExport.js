@@ -87,24 +87,8 @@ export async function captureElement(element) {
       useCORS: true,
       allowTaint: true,
       backgroundColor: null,
-      scale: 3, // Higher quality
-      logging: false,
-      // Fix for image stretching
-      width: element.offsetWidth,
-      height: element.offsetHeight,
-      windowWidth: element.offsetWidth,
-      windowHeight: element.offsetHeight,
-      // Preserve image aspect ratios
-      imageTimeout: 0,
-      onclone: (clonedDoc, clonedElement) => {
-        // Ensure background images maintain aspect ratio
-        clonedElement.querySelectorAll('*').forEach(el => {
-          const computed = window.getComputedStyle(el);
-          if (computed.backgroundImage && computed.backgroundImage !== 'none') {
-            el.style.backgroundSize = computed.backgroundSize || 'cover';
-          }
-        });
-      }
+      scale: 2,
+      logging: false
     });
     return canvas.toDataURL('image/png');
   } catch (error) {

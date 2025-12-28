@@ -9,14 +9,8 @@ function ImageSequenceSection({
   showThumbnails = false,
   showFrameCounter = false,
   autoPlay = true,
-  previewHeight = 300,
-  imageHeight, // Use imageHeight if provided, otherwise fall back to previewHeight
-  // Interactive props
-  isSelected = false,
-  onImageReplace
+  previewHeight = 300
 }) {
-  const height = imageHeight || previewHeight;
-  const fileInputRefs = useRef({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const animationRef = useRef(null);
@@ -54,7 +48,7 @@ function ImageSequenceSection({
         <div 
           style={{
             width: '100%',
-            height: `${height}px`,
+            height: `${previewHeight}px`,
             backgroundColor: '#f4f4f5',
             display: 'flex',
             flexDirection: 'column',
@@ -165,72 +159,25 @@ function ImageSequenceSection({
           overflowX: 'auto',
           paddingBottom: '4px'
         }}>
-          {images.map((image, index) => {
-            const handleFileChange = (e) => {
-              const file = e.target.files?.[0];
-              if (file && onImageReplace) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                  onImageReplace(index, event.target.result);
-                };
-                reader.readAsDataURL(file);
-              }
-              e.target.value = '';
-            };
-            
-            return (
-              <div
-                key={index}
-                onClick={(e) => {
-                  if (isSelected && onImageReplace) {
-                    e.stopPropagation();
-                    fileInputRefs.current[index]?.click();
-                  } else {
-                    setCurrentIndex(index);
-                  }
-                }}
-                style={{
-                  flexShrink: 0,
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                  border: currentIndex === index ? '2px solid #04D1FC' : '1px solid #e4e4e7',
-                  cursor: 'pointer',
-                  opacity: currentIndex === index ? 1 : 0.7,
-                  backgroundImage: `url(${image})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  position: 'relative'
-                }}
-              >
-                <input
-                  ref={el => fileInputRefs.current[index] = el}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  style={{ display: 'none' }}
-                />
-                {isSelected && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      backgroundColor: 'rgba(4, 209, 252, 0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      color: 'white',
-                      textShadow: '0 1px 2px rgba(0,0,0,0.5)'
-                    }}
-                  >
-                    Click
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {images.map((image, index) => (
+            <div
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              style={{
+                flexShrink: 0,
+                width: '60px',
+                height: '60px',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                border: currentIndex === index ? '2px solid #04D1FC' : '1px solid #e4e4e7',
+                cursor: 'pointer',
+                opacity: currentIndex === index ? 1 : 0.7,
+                backgroundImage: `url(${image})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            />
+          ))}
         </div>
       )}
     </div>

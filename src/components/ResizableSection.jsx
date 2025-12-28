@@ -12,7 +12,6 @@ function ResizableSection({
   isUnlocked 
 }) {
   const [isResizing, setIsResizing] = useState(false);
-  const [isHoveringBottom, setIsHoveringBottom] = useState(false);
   const [startY, setStartY] = useState(0);
   const [startHeight, setStartHeight] = useState(height);
   const containerRef = useRef(null);
@@ -53,50 +52,38 @@ function ResizableSection({
     };
   }, [isResizing, startY, startHeight, minHeight, maxHeight, onHeightChange]);
 
-  // Show handle on hover or when resizing
-  const showHandle = isHoveringBottom || isResizing;
-
   return (
     <div 
       ref={containerRef} 
-      className="relative"
+      className="relative group"
     >
       {children}
       
-      {/* Invisible hover zone at bottom - always present */}
-      <div 
-        className="absolute left-0 right-0 bottom-0 h-6 z-10"
-        onMouseEnter={() => setIsHoveringBottom(true)}
-        onMouseLeave={() => !isResizing && setIsHoveringBottom(false)}
-      />
-      
-      {/* Resize handle - only show on hover at bottom or when resizing */}
-      <div
-        className={cn(
-          "absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-1/2 z-20",
-          "flex items-center justify-center",
-          "transition-all duration-150",
-          showHandle ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"
-        )}
-        onMouseEnter={() => setIsHoveringBottom(true)}
-        onMouseLeave={() => !isResizing && setIsHoveringBottom(false)}
-      >
+      {/* Resize handle - only show when selected and unlocked */}
+      {isSelected && (
         <div
-          onMouseDown={handleMouseDown}
           className={cn(
-            "flex items-center gap-1 px-3 py-1 rounded-full cursor-ns-resize",
-            "bg-white border border-zinc-200 shadow-md",
-            "hover:bg-zinc-50 hover:border-zinc-300 hover:shadow-lg",
-            "transition-all duration-150",
-            isResizing && "bg-[#04D1FC] border-[#04D1FC] text-white shadow-lg"
+            "absolute left-1/2 -translate-x-1/2 -bottom-3 z-20",
+            "flex items-center justify-center",
+            "transition-opacity duration-200",
+            isUnlocked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
         >
-          <GripHorizontal className="w-4 h-4" />
-          <span className="text-[10px] font-medium whitespace-nowrap">
-            {isResizing ? `${height}px` : 'Drag to resize'}
-          </span>
+          <div
+            onMouseDown={handleMouseDown}
+            className={cn(
+              "flex items-center gap-1 px-3 py-1 rounded-full cursor-ns-resize",
+              "bg-white border border-zinc-200 shadow-sm",
+              "hover:bg-zinc-50 hover:border-zinc-300",
+              "transition-all duration-200",
+              isResizing && "bg-[#04D1FC] border-[#04D1FC] text-white"
+            )}
+          >
+            <GripHorizontal className="w-4 h-4" />
+            <span className="text-[10px] font-medium">{height}px</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
