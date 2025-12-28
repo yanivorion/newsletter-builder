@@ -385,10 +385,13 @@ function NewsletterEditor({
 
         <SectionComponent 
           {...section} 
-          isEditing={isSelected && section.type === 'header'}
+          isEditing={isSelected && (section.type === 'header' || section.type === 'styledTitle')}
           isSelected={isSelected}
           onSpacingChange={section.type === 'header' ? (field, value) => {
             onSectionUpdate?.(section.id, { [field]: value });
+          } : undefined}
+          onUpdate={section.type === 'header' || section.type === 'styledTitle' ? (updates) => {
+            onSectionUpdate?.(section.id, updates);
           } : undefined}
           onContentChange={
             section.type === 'text' ? (newContent) => {

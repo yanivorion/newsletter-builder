@@ -44,8 +44,12 @@ import {
   Smile,
   Languages,
   SeparatorHorizontal,
-  LayoutGrid
+  LayoutGrid,
+  Camera,
+  Download
 } from 'lucide-react';
+import domtoimage from 'dom-to-image-more';
+import { captureElement, downloadDataUrl } from '../utils/gifExport';
 import { exportSequenceAsGif, exportMarqueeAsGif, downloadBlob } from '../utils/sequenceGifExport';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
@@ -54,6 +58,7 @@ import ShapeDividerPicker from './ShapeDividerPicker';
 import { mediaKit, getLogosByCategory } from '../lib/mediaKit';
 import IconPicker, { getIconByName } from './IconPicker';
 import { GOOGLE_FONTS, loadGoogleFont, getFontStack, getFontCategories } from '../lib/googleFonts';
+import { useClipboard } from '../context/ClipboardContext';
 
 // Theme colors for dividers
 const DIVIDER_THEME_COLORS = [
@@ -97,15 +102,77 @@ function SectionActionBar({
   const [expanded, setExpanded] = useState({});
   const [mediaCategory, setMediaCategory] = useState('all');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isExportingImage, setIsExportingImage] = useState(false);
+
+  // Export section as image - using same method as GIF export which works
+  const handleExportAsImage = useCallback(async () => {
+    if (!section?.id) return;
+    
+    setIsExportingImage(true);
+    try {
+      // Get the full section wrapper (includes dividers)
+      const sectionWrapper = document.querySelector(`[data-section-id="${section.id}"]`);
+      if (!sectionWrapper) {
+        setIsExportingImage(false);
+        return;
+      }
+
+      // Hide UI elements
+      const buttons = sectionWrapper.querySelectorAll('button');
+      buttons.forEach(b => b.style.visibility = 'hidden');
+      
+      // Hide spacer dots (the ... indicators)
+      const spacerDots = sectionWrapper.querySelectorAll('[class*="tracking-widest"], .tracking-widest');
+      spacerDots.forEach(d => d.style.visibility = 'hidden');
+      
+      // Hide any elements with "..." text content that are spacer indicators
+      sectionWrapper.querySelectorAll('*').forEach(el => {
+        if (el.textContent === '...' || el.textContent === '···') {
+          el.dataset.wasVisible = el.style.visibility;
+          el.style.visibility = 'hidden';
+        }
+      });
+      
+      // Remove selection ring
+      const origClass = sectionWrapper.className;
+      sectionWrapper.className = origClass.replace(/ring-\S+/g, '').replace(/ring-offset-\S+/g, '');
+
+      // Capture the FULL wrapper (includes dividers) not just first child
+      const dataUrl = await captureElement(sectionWrapper);
+      
+      // Restore UI
+      buttons.forEach(b => b.style.visibility = '');
+      spacerDots.forEach(d => d.style.visibility = '');
+      sectionWrapper.querySelectorAll('*').forEach(el => {
+        if (el.dataset.wasVisible !== undefined) {
+          el.style.visibility = el.dataset.wasVisible;
+          delete el.dataset.wasVisible;
+        }
+      });
+      sectionWrapper.className = origClass;
+
+      // Download
+      downloadDataUrl(dataUrl, `section-${section.type}-${Date.now()}.png`);
+
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExportingImage(false);
+    }
+  }, [section?.id, section?.type]);
   const [prevSectionId, setPrevSectionId] = useState(null);
   const [isExportingGif, setIsExportingGif] = useState(false);
   const [gifProgress, setGifProgress] = useState(0);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showCopyToast, setShowCopyToast] = useState(null); // 'style' | 'section' | null
   const fileInputRef = useRef(null);
   const bgImageInputRef = useRef(null);
   const heroImageInputRef = useRef(null);
   const sequenceInputRef = useRef(null);
   const barRef = useRef(null);
+  
+  // Clipboard for copy/paste style and sections
+  const { copyStyle, pasteStyle, canPasteStyle, copySection } = useClipboard();
   
   // Draggable state - use ref to persist position across section changes
   const [isDragging, setIsDragging] = useState(false);
@@ -1330,17 +1397,181 @@ function SectionActionBar({
         </div>
       </ActionGroup>
 
-      {/* Title Typography */}
-      <ActionGroup label="Title" icon={Type} expanded={expanded.title} onToggle={() => toggleExpand('title')}>
+      {/* Title Segments - Multi-styled title */}
+      <ActionGroup label="Title Segments" icon={Type} expanded={expanded.titleSegments} onToggle={() => toggleExpand('titleSegments')}>
+        <div className="space-y-3">
+          {/* Mode Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500">Multi-style Mode</span>
+            <button
+              onClick={() => {
+                if (!section.useTitleSegments) {
+                  // Enable segments mode - create initial segments from current title
+                  const initialSegments = section.titleSegments || [
+                    { id: 'seg-1', text: section.title || 'Title', fontWeight: '700', fontStyle: 'normal', color: section.textColor || '#FFFFFF' }
+                  ];
+                  onUpdate({ useTitleSegments: true, titleSegments: initialSegments });
+                } else {
+                  onUpdate({ useTitleSegments: false });
+                }
+              }}
+              className={cn(
+                "w-9 h-5 rounded-full transition-colors relative",
+                section.useTitleSegments ? "bg-[#04D1FC]" : "bg-zinc-200"
+              )}
+            >
+              <div
+                className={cn(
+                  "w-4 h-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform",
+                  section.useTitleSegments ? "translate-x-4" : "translate-x-0.5"
+                )}
+              />
+            </button>
+          </div>
+          
+          {section.useTitleSegments ? (
+            <>
+              {/* Segments List */}
+              {(section.titleSegments || []).map((segment, index) => (
+                <div key={segment.id} className="p-2 bg-zinc-50 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-zinc-500">Segment {index + 1}</span>
+                    {(section.titleSegments || []).length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newSegments = (section.titleSegments || []).filter((_, i) => i !== index);
+                          onUpdate({ titleSegments: newSegments });
+                        }}
+                        className="h-5 w-5 p-0 text-red-400 hover:text-red-600"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* Text */}
+                  <input
+                    type="text"
+                    value={segment.text}
+                    onChange={(e) => {
+                      const newSegments = [...(section.titleSegments || [])];
+                      newSegments[index] = { ...segment, text: e.target.value };
+                      onUpdate({ titleSegments: newSegments });
+                    }}
+                    className="w-full h-7 text-xs rounded border border-zinc-200 px-2"
+                    placeholder="Text..."
+                  />
+                  
+                  {/* Font Weight */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-400 w-14">Weight</span>
+                    <select
+                      value={segment.fontWeight || '400'}
+                      onChange={(e) => {
+                        const newSegments = [...(section.titleSegments || [])];
+                        newSegments[index] = { ...segment, fontWeight: e.target.value };
+                        onUpdate({ titleSegments: newSegments });
+                      }}
+                      className="flex-1 h-6 text-xs rounded border border-zinc-200 px-1"
+                    >
+                      <option value="100">Thin (100)</option>
+                      <option value="200">ExtraLight (200)</option>
+                      <option value="300">Light (300)</option>
+                      <option value="400">Regular (400)</option>
+                      <option value="500">Medium (500)</option>
+                      <option value="600">SemiBold (600)</option>
+                      <option value="700">Bold (700)</option>
+                      <option value="800">ExtraBold (800)</option>
+                      <option value="900">Black (900)</option>
+                    </select>
+                  </div>
+                  
+                  {/* Font Style */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-400 w-14">Style</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant={segment.fontStyle === 'normal' || !segment.fontStyle ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          const newSegments = [...(section.titleSegments || [])];
+                          newSegments[index] = { ...segment, fontStyle: 'normal' };
+                          onUpdate({ titleSegments: newSegments });
+                        }}
+                        className="h-6 px-2 text-[10px]"
+                      >
+                        Normal
+                      </Button>
+                      <Button
+                        variant={segment.fontStyle === 'italic' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          const newSegments = [...(section.titleSegments || [])];
+                          newSegments[index] = { ...segment, fontStyle: 'italic' };
+                          onUpdate({ titleSegments: newSegments });
+                        }}
+                        className="h-6 px-2 text-[10px] italic"
+                      >
+                        Italic
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Segment Color */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-400 w-14">Color</span>
+                    <input
+                      type="color"
+                      value={segment.color || '#FFFFFF'}
+                      onChange={(e) => {
+                        const newSegments = [...(section.titleSegments || [])];
+                        newSegments[index] = { ...segment, color: e.target.value };
+                        onUpdate({ titleSegments: newSegments });
+                      }}
+                      className="w-6 h-6 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              ))}
+              
+              {/* Add Segment Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newSegment = {
+                    id: `seg-${Date.now()}`,
+                    text: 'Text',
+                    fontWeight: '400',
+                    fontStyle: 'normal',
+                    color: section.textColor || '#FFFFFF'
+                  };
+                  onUpdate({ titleSegments: [...(section.titleSegments || []), newSegment] });
+                }}
+                className="w-full h-7 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Segment
+              </Button>
+            </>
+          ) : (
+            /* Simple title mode */
+            <input
+              type="text"
+              value={section.title || 'Newsletter'}
+              onChange={(e) => onUpdate({ title: e.target.value })}
+              placeholder="Enter title..."
+              className="w-full h-8 px-2 text-sm font-medium rounded border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#04D1FC] focus:border-transparent"
+            />
+          )}
+        </div>
+      </ActionGroup>
+
+      {/* Title Settings */}
+      <ActionGroup label="Title Settings" icon={Type} expanded={expanded.title} onToggle={() => toggleExpand('title')}>
         <div className="space-y-2">
-          {/* Title Text Input */}
-          <input
-            type="text"
-            value={section.title || 'Newsletter'}
-            onChange={(e) => onUpdate({ title: e.target.value })}
-            placeholder="Enter title..."
-            className="w-full h-8 px-2 text-sm font-medium rounded border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#04D1FC] focus:border-transparent"
-          />
           {/* Font Family */}
           <div className="flex items-center gap-2">
             <Type className="w-3 h-3 text-zinc-400" />
@@ -1353,55 +1584,98 @@ function SectionActionBar({
               <option value="Noto Sans Hebrew">Noto Sans Hebrew</option>
               <option value="Poppins">Poppins</option>
               <option value="Inter">Inter</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Playfair Display">Playfair Display</option>
+              <option value="Bebas Neue">Bebas Neue</option>
+              <option value="Space Grotesk">Space Grotesk</option>
               <option value="Assistant">Assistant</option>
               <option value="Heebo">Heebo</option>
             </select>
           </div>
-          {/* Text Color */}
+          {/* Size */}
           <div className="flex items-center gap-2">
-            <Palette className="w-3 h-3 text-zinc-400" />
-            <span className="text-[10px] text-zinc-400 w-12">Color</span>
-            <input 
-              type="color" 
-              value={section.textColor || '#FFFFFF'} 
-              onChange={(e) => onUpdate({ textColor: e.target.value })} 
-              className="w-6 h-6 rounded cursor-pointer border border-zinc-200" 
-            />
-            <div className="flex gap-0.5">
-              {['#FFFFFF', '#000000', '#04D1FC'].map(c => (
-                <button
-                  key={c}
-                  onClick={() => onUpdate({ textColor: c })}
-                  className={cn("w-5 h-5 rounded border", section.textColor === c ? "border-[#04D1FC]" : "border-zinc-200")}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-zinc-400 w-12">Size</span>
             <NumberStepper
               value={section.titleFontSize || 28}
               onChange={(v) => onUpdate({ titleFontSize: v })}
               min={12}
-              max={72}
+              max={150}
               suffix="px"
             />
-            <Button
-              variant={section.titleFontWeight === '700' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onUpdate({ titleFontWeight: section.titleFontWeight === '700' ? '400' : '700' })}
-              className="h-7 w-7 p-0"
-            >
-              <Bold className="w-3 h-3" />
-            </Button>
-            <Button
-              variant={section.titleFontStyle === 'italic' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onUpdate({ titleFontStyle: section.titleFontStyle === 'italic' ? 'normal' : 'italic' })}
-              className="h-7 w-7 p-0"
-            >
-              <Italic className="w-3 h-3" />
-            </Button>
+          </div>
+          {/* Text Color (only for simple mode) */}
+          {!section.useTitleSegments && (
+            <div className="flex items-center gap-2">
+              <Palette className="w-3 h-3 text-zinc-400" />
+              <span className="text-[10px] text-zinc-400 w-12">Color</span>
+              <input 
+                type="color" 
+                value={section.textColor || '#FFFFFF'} 
+                onChange={(e) => onUpdate({ textColor: e.target.value })} 
+                className="w-6 h-6 rounded cursor-pointer border border-zinc-200" 
+              />
+              <div className="flex gap-0.5">
+                {['#FFFFFF', '#000000', '#04D1FC'].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => onUpdate({ textColor: c })}
+                    className={cn("w-5 h-5 rounded border", section.textColor === c ? "border-[#04D1FC]" : "border-zinc-200")}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Bold/Italic for simple mode */}
+          {!section.useTitleSegments && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant={section.titleFontWeight === '700' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onUpdate({ titleFontWeight: section.titleFontWeight === '700' ? '400' : '700' })}
+                className="h-7 w-7 p-0"
+              >
+                <Bold className="w-3 h-3" />
+              </Button>
+              <Button
+                variant={section.titleFontStyle === 'italic' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onUpdate({ titleFontStyle: section.titleFontStyle === 'italic' ? 'normal' : 'italic' })}
+                className="h-7 w-7 p-0"
+              >
+                <Italic className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+          {/* Title Alignment */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 w-12">Align</span>
+            <div className="flex gap-1 flex-1">
+              <Button
+                variant={section.titleAlign === 'left' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ titleAlign: 'left' })}
+                className="h-6 w-6 p-0"
+              >
+                <AlignLeft className="w-3 h-3" />
+              </Button>
+              <Button
+                variant={section.titleAlign === 'center' || !section.titleAlign ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ titleAlign: 'center' })}
+                className="h-6 w-6 p-0"
+              >
+                <AlignCenter className="w-3 h-3" />
+              </Button>
+              <Button
+                variant={section.titleAlign === 'right' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ titleAlign: 'right' })}
+                className="h-6 w-6 p-0"
+              >
+                <AlignRight className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
           {/* Kerning */}
           <div className="flex items-center gap-2">
@@ -1503,10 +1777,43 @@ function SectionActionBar({
                   />
                 </div>
               </div>
+              
+              {/* Badge Position */}
+              <div className="space-y-2 pt-2 border-t border-zinc-100">
+                <span className="text-[10px] text-zinc-400 font-medium">Position Offset</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-zinc-400 w-10">X</span>
+                  <NumberStepper
+                    value={section.dateBadgeOffsetX || 0}
+                    onChange={(v) => onUpdate({ dateBadgeOffsetX: v })}
+                    min={-200}
+                    max={200}
+                    step={5}
+                    suffix="px"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-zinc-400 w-10">Y</span>
+                  <NumberStepper
+                    value={section.dateBadgeOffsetY || 0}
+                    onChange={(v) => onUpdate({ dateBadgeOffsetY: v })}
+                    min={-200}
+                    max={200}
+                    step={5}
+                    suffix="px"
+                  />
+                </div>
+              </div>
             </>
           )}
         </div>
       </ActionGroup>
+
+      {/* Background */}
+      {renderBackgroundControls()}
+
+      {/* Outer Frame (card style) */}
+      {renderOuterWrapperControls()}
 
       {/* Divider */}
       {renderDividerControls()}
@@ -4692,16 +4999,31 @@ function SectionActionBar({
         <ActionGroup label="Image" icon={ImageIcon} expanded={expanded.image} onToggle={() => toggleExpand('image')}>
           <div className="space-y-2">
             {section.image ? (
-              <div className="relative w-full h-20 bg-zinc-100 rounded-lg overflow-hidden">
-                <img src={section.image} alt="" className="w-full h-full object-cover" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onUpdate({ image: '' })}
-                  className="absolute top-1 right-1 h-5 w-5 p-0 bg-white/80 hover:bg-red-50"
-                >
-                  <Trash2 className="w-3 h-3 text-red-500" />
-                </Button>
+              <div 
+                className="relative w-full h-20 rounded-lg overflow-hidden"
+                style={{ backgroundColor: section.imageBgColor || '#f4f4f5' }}
+              >
+                <img src={section.image} alt="" className="w-full h-full object-contain" />
+                <div className="absolute top-1 right-1 flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveBackground('image')}
+                    disabled={isProcessing}
+                    className="h-5 w-5 p-0 bg-white/80 hover:bg-white"
+                    title="Remove background"
+                  >
+                    {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onUpdate({ image: '' })}
+                    className="h-5 w-5 p-0 bg-white/80 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-500" />
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="text-center p-3 bg-zinc-50 rounded-lg border-2 border-dashed border-zinc-200">
@@ -4722,6 +5044,32 @@ function SectionActionBar({
               }}
               className="w-full text-[10px]"
             />
+            {/* Image Background Color */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-12">Bg Color</span>
+              <input 
+                type="color" 
+                value={section.imageBgColor || '#f4f4f5'} 
+                onChange={(e) => onUpdate({ imageBgColor: e.target.value })} 
+                className="w-6 h-6 rounded cursor-pointer border border-zinc-200"
+              />
+              <div className="flex gap-0.5">
+                {['#f4f4f5', '#ffffff', '#000000', 'transparent'].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => onUpdate({ imageBgColor: c })}
+                    className={cn(
+                      "w-5 h-5 rounded border text-[8px]",
+                      section.imageBgColor === c ? "border-[#04D1FC]" : "border-zinc-200"
+                    )}
+                    style={{ backgroundColor: c === 'transparent' ? 'white' : c }}
+                    title={c === 'transparent' ? 'Transparent' : c}
+                  >
+                    {c === 'transparent' && '∅'}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-zinc-400 w-12">Width</span>
               <NumberStepper value={section.imageWidth || 200} onChange={(v) => onUpdate({ imageWidth: v })} min={100} max={400} suffix="px" />
@@ -4912,9 +5260,122 @@ function SectionActionBar({
 
   const renderStyledTitleControls = () => {
     const segments = section.segments || [];
+    const currentLayout = section.layout || 'default';
+    const isStripLayout = currentLayout === 'strip-left' || currentLayout === 'strip-right';
     
     return (
       <>
+        {/* Layout Selection */}
+        <ActionGroup label="Layout" icon={LayoutGrid} expanded={expanded.layout} onToggle={() => toggleExpand('layout')}>
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-1">
+              <Button
+                variant={currentLayout === 'default' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ layout: 'default' })}
+                className="h-14 p-1 flex flex-col items-center justify-center gap-0.5"
+              >
+                <div className="w-8 h-6 bg-current/20 rounded flex items-center justify-center">
+                  <Type className="w-4 h-4" />
+                </div>
+                <span className="text-[9px]">Default</span>
+              </Button>
+              <Button
+                variant={currentLayout === 'strip-left' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ layout: 'strip-left' })}
+                className="h-14 p-1 flex flex-col items-center justify-center gap-0.5"
+              >
+                <div className="w-8 h-6 flex items-center gap-0.5">
+                  <div className="w-3 h-3 bg-current/40 rounded-full" />
+                  <div className="flex-1 h-2 bg-current/20 rounded" />
+                </div>
+                <span className="text-[9px]">Strip L</span>
+              </Button>
+              <Button
+                variant={currentLayout === 'strip-right' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onUpdate({ layout: 'strip-right' })}
+                className="h-14 p-1 flex flex-col items-center justify-center gap-0.5"
+              >
+                <div className="w-8 h-6 flex items-center gap-0.5">
+                  <div className="flex-1 h-2 bg-current/20 rounded" />
+                  <div className="w-3 h-3 bg-current/40 rounded-full" />
+                </div>
+                <span className="text-[9px]">Strip R</span>
+              </Button>
+            </div>
+            
+            {/* Strip Image Controls */}
+            {isStripLayout && (
+              <div className="space-y-2 pt-2 border-t border-zinc-100">
+                <span className="text-[10px] font-medium text-zinc-500">Strip Image</span>
+                
+                {/* Image Upload */}
+                <div className="flex items-center gap-2">
+                  {section.stripImage ? (
+                    <div className="relative">
+                      <img 
+                        src={section.stripImage} 
+                        alt="Strip" 
+                        className="w-12 h-12 object-cover rounded-full border border-zinc-200"
+                      />
+                      <button
+                        onClick={() => onUpdate({ stripImage: null })}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-12 h-12 rounded-full bg-zinc-100 border-2 border-dashed border-zinc-300 flex items-center justify-center cursor-pointer hover:bg-zinc-200 transition-colors">
+                      <Upload className="w-4 h-4 text-zinc-400" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => onUpdate({ stripImage: ev.target.result });
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-zinc-400 w-8">Size</span>
+                      <NumberStepper 
+                        value={section.stripImageWidth || 180} 
+                        onChange={(v) => onUpdate({ stripImageWidth: v })} 
+                        min={60} 
+                        max={400} 
+                        suffix="px" 
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-zinc-400 w-8">Shape</span>
+                      <select
+                        value={section.stripImageBorderRadius || '50%'}
+                        onChange={(e) => onUpdate({ stripImageBorderRadius: e.target.value })}
+                        className="flex-1 h-5 text-[10px] rounded border border-zinc-200 px-1"
+                      >
+                        <option value="50%">Circle</option>
+                        <option value="16px">Rounded</option>
+                        <option value="8px">Soft</option>
+                        <option value="0">Square</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </ActionGroup>
+        
         {/* Title Segments */}
         <ActionGroup label="Title Segments" icon={Type} expanded={expanded.typography} onToggle={() => toggleExpand('typography')}>
           <div className="space-y-3">
@@ -5255,6 +5716,191 @@ function SectionActionBar({
               <span className="text-[10px] text-zinc-400 w-14">Title → Sub</span>
               <NumberStepper value={section.spacingTitleToSubtitle || 16} onChange={(v) => onUpdate({ spacingTitleToSubtitle: v })} min={0} max={60} suffix="px" />
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400 w-14">Title → Img</span>
+              <NumberStepper value={section.spacingTitleToImage || 24} onChange={(v) => onUpdate({ spacingTitleToImage: v })} min={0} max={80} suffix="px" />
+            </div>
+          </div>
+        </ActionGroup>
+
+        {/* Decorative Image */}
+        <ActionGroup label="Decorative Image" icon={ImageIcon} expanded={expanded.decorativeImage} onToggle={() => toggleExpand('decorativeImage')}>
+          <div className="space-y-3">
+            {/* Enable/Disable */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-zinc-500">Show Image</span>
+              <button
+                onClick={() => onUpdate({ showDecorativeImage: !section.showDecorativeImage })}
+                className={cn(
+                  "w-9 h-5 rounded-full transition-colors relative",
+                  section.showDecorativeImage ? "bg-[#04D1FC]" : "bg-zinc-200"
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-4 h-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform",
+                    section.showDecorativeImage ? "translate-x-4" : "translate-x-0.5"
+                  )}
+                />
+              </button>
+            </div>
+
+            {section.showDecorativeImage && (
+              <>
+                {/* Clip to bounds toggle */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-500">Clip to section</span>
+                  <button
+                    onClick={() => onUpdate({ decorativeImageClip: section.decorativeImageClip === false ? true : false })}
+                    className={cn(
+                      "w-9 h-5 rounded-full transition-colors relative",
+                      section.decorativeImageClip !== false ? "bg-[#04D1FC]" : "bg-zinc-200"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "w-4 h-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform",
+                        section.decorativeImageClip !== false ? "translate-x-4" : "translate-x-0.5"
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {/* Image Upload */}
+                {section.decorativeImage ? (
+                  <div className="relative w-full h-20 bg-zinc-100 rounded-lg overflow-hidden">
+                    <img src={section.decorativeImage} alt="Decorative" className="w-full h-full object-contain" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onUpdate({ decorativeImage: null })}
+                      className="absolute top-1 right-1 h-5 w-5 p-0 bg-white/80 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center p-3 bg-zinc-50 rounded-lg border-2 border-dashed border-zinc-200">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => onUpdate({ decorativeImage: ev.target.result });
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="styled-title-decorative-upload"
+                    />
+                    <label htmlFor="styled-title-decorative-upload" className="cursor-pointer text-xs text-zinc-500">
+                      Click to upload image
+                    </label>
+                  </div>
+                )}
+
+                {/* Image Size */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-12">Width</span>
+                  <NumberStepper value={section.decorativeImageWidth || 150} onChange={(v) => onUpdate({ decorativeImageWidth: v })} min={50} max={500} suffix="px" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-12">Height</span>
+                  <div className="flex items-center gap-1 flex-1">
+                    <button
+                      onClick={() => onUpdate({ decorativeImageHeight: 'auto' })}
+                      className={cn(
+                        "px-2 py-1 rounded text-[9px] font-medium transition-colors",
+                        section.decorativeImageHeight === 'auto' || !section.decorativeImageHeight
+                          ? "bg-zinc-900 text-white"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      )}
+                    >
+                      Auto
+                    </button>
+                    {section.decorativeImageHeight !== 'auto' && section.decorativeImageHeight && (
+                      <NumberStepper
+                        value={section.decorativeImageHeight}
+                        onChange={(v) => onUpdate({ decorativeImageHeight: v })}
+                        min={30}
+                        max={400}
+                        step={10}
+                        suffix="px"
+                      />
+                    )}
+                    {(section.decorativeImageHeight === 'auto' || !section.decorativeImageHeight) && (
+                      <button
+                        onClick={() => onUpdate({ decorativeImageHeight: 100 })}
+                        className="px-2 py-1 rounded text-[9px] font-medium bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      >
+                        Set Height
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Image Position */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-400 w-12">Align</span>
+                  <div className="flex gap-1 flex-1">
+                    <Button
+                      variant={section.decorativeImagePosition === 'left' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => onUpdate({ decorativeImagePosition: 'left' })}
+                      className="h-6 w-6 p-0"
+                    >
+                      <AlignLeft className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant={section.decorativeImagePosition === 'center' || !section.decorativeImagePosition ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => onUpdate({ decorativeImagePosition: 'center' })}
+                      className="h-6 w-6 p-0"
+                    >
+                      <AlignCenter className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant={section.decorativeImagePosition === 'right' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => onUpdate({ decorativeImagePosition: 'right' })}
+                      className="h-6 w-6 p-0"
+                    >
+                      <AlignRight className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Offset Controls */}
+                <div className="space-y-2 pt-2 border-t border-zinc-100">
+                  <span className="text-[10px] text-zinc-400 font-medium">Position Offset</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-zinc-400 w-10">X</span>
+                    <NumberStepper
+                      value={section.decorativeImageOffsetX || 0}
+                      onChange={(v) => onUpdate({ decorativeImageOffsetX: v })}
+                      min={-300}
+                      max={300}
+                      step={5}
+                      suffix="px"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-zinc-400 w-10">Y</span>
+                    <NumberStepper
+                      value={section.decorativeImageOffsetY || 0}
+                      onChange={(v) => onUpdate({ decorativeImageOffsetY: v })}
+                      min={-300}
+                      max={300}
+                      step={5}
+                      suffix="px"
+                    />
+                  </div>
+                </div>
+
+              </>
+            )}
           </div>
         </ActionGroup>
 
@@ -5328,6 +5974,20 @@ function SectionActionBar({
           <Button
             variant="ghost"
             size="sm"
+            onClick={handleExportAsImage}
+            disabled={isExportingImage}
+            className="h-6 w-6 p-0 text-zinc-400 hover:text-green-600"
+            title="Export as high-quality image"
+          >
+            {isExportingImage ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Camera className="w-3 h-3" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onDelete}
             className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
             title="Delete"
@@ -5336,6 +5996,64 @@ function SectionActionBar({
           </Button>
         </div>
       </div>
+
+      {/* Copy/Paste Style & Section Row */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-50/50 border-b border-zinc-100">
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              copyStyle(section);
+              setShowCopyToast('style');
+              setTimeout(() => setShowCopyToast(null), 2000);
+            }}
+            className="h-6 px-2 text-[10px] gap-1"
+            title="Copy style (colors, fonts, spacing)"
+          >
+            <Palette className="w-3 h-3" />
+            Copy Style
+          </Button>
+          {canPasteStyle(section.type) && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                const style = pasteStyle(section.type);
+                if (style) {
+                  onUpdate(style);
+                }
+              }}
+              className="h-6 px-2 text-[10px] gap-1 bg-[#04D1FC] hover:bg-[#04D1FC]/90"
+              title="Paste style to this section"
+            >
+              <Palette className="w-3 h-3" />
+              Paste Style
+            </Button>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            copySection(section);
+            setShowCopyToast('section');
+            setTimeout(() => setShowCopyToast(null), 2000);
+          }}
+          className="h-6 px-2 text-[10px] gap-1"
+          title="Copy entire section"
+        >
+          <Copy className="w-3 h-3" />
+          Copy Section
+        </Button>
+      </div>
+
+      {/* Copy Toast */}
+      {showCopyToast && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-[10px] px-3 py-1.5 rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-top-2">
+          {showCopyToast === 'style' ? '✓ Style copied!' : '✓ Section copied!'}
+        </div>
+      )}
 
       {/* Controls */}
       <div className="p-2 space-y-1 flex-1 overflow-y-auto">

@@ -29,17 +29,21 @@ import {
   PanelsTopLeft,
   Megaphone,
   AlignRight,
-  Sparkles
+  Sparkles,
+  Clipboard
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
+import { useClipboard } from '../context/ClipboardContext';
 
 // Basic section types (always visible)
 const basicSectionTypes = [
   { type: 'header', label: 'Header', icon: LayoutTemplate },
   { type: 'marquee', label: 'Marquee', icon: MoveHorizontal },
   { type: 'text', label: 'Text', icon: Type },
+  { type: 'styledTitle', label: 'Styled', icon: Sparkles },
   { type: 'sectionHeader', label: 'Title', icon: Heading },
+  { type: 'promoCard', label: 'Promo', icon: PanelsTopLeft },
   { type: 'imageCollage', label: 'Images', icon: Image },
   { type: 'imageSequence', label: 'Sequence', icon: Film },
   { type: 'profileCards', label: 'Profiles', icon: Users },
@@ -49,7 +53,6 @@ const basicSectionTypes = [
 
 // Layout section types (in submenu)
 const layoutSectionTypes = [
-  { type: 'styledTitle', label: 'Styled Title', icon: Sparkles, description: 'Multi-weight title like ElectreoNews' },
   { type: 'stats', label: 'Stats', icon: Hash, description: 'Numbers grid with labels' },
   { type: 'featureGrid', label: 'Features', icon: Grid3X3, description: 'Image with feature bullets' },
   { type: 'specsTable', label: 'Specs Table', icon: Table, description: 'Key-value pairs table' },
@@ -69,6 +72,7 @@ const layoutSectionTypes = [
 
 function FloatingToolbar({ 
   onAddSection, 
+  onPasteSection,
   hasActiveNewsletter,
   isUnlocked,
   onToggleUnlock
@@ -78,6 +82,16 @@ function FloatingToolbar({
   const [mouseX, setMouseX] = useState(null);
   const dockRef = useRef(null);
   const itemRefs = useRef([]);
+  
+  const { hasCopiedSection, getCopiedSection, getCopiedSectionType } = useClipboard();
+  
+  const handlePasteSection = useCallback(() => {
+    const section = getCopiedSection();
+    if (section && onPasteSection) {
+      onPasteSection(section);
+      setShowDock(false);
+    }
+  }, [getCopiedSection, onPasteSection]);
 
   const handleSelect = useCallback((type) => {
     onAddSection(type);
@@ -284,6 +298,42 @@ function FloatingToolbar({
                   </button>
                 );
               })}
+              
+              {/* Paste Section Button - only show when there's a copied section */}
+              {hasCopiedSection() && (
+                <>
+                  <div className="w-px h-8 bg-zinc-300/50 mx-1" />
+                  <button
+                    onClick={handlePasteSection}
+                    className="flex flex-col items-center cursor-pointer relative group"
+                    style={{
+                      transition: 'transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                      transformOrigin: 'bottom center'
+                    }}
+                  >
+                    {/* Tooltip */}
+                    <div 
+                      className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#04D1FC] text-white text-[10px] font-medium rounded-md whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Paste {getCopiedSectionType()}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#04D1FC]" />
+                    </div>
+                    
+                    {/* Icon Container */}
+                    <div 
+                      className="w-11 h-11 rounded-xl flex items-center justify-center relative bg-[#04D1FC]/10 group-hover:bg-[#04D1FC]/20 border-2 border-dashed border-[#04D1FC]"
+                      style={{ 
+                        transition: 'all 0.15s ease-out'
+                      }}
+                    >
+                      <Clipboard className="w-5 h-5 text-[#04D1FC]" />
+                    </div>
+                    
+                    {/* Dot indicator */}
+                    <div className="w-1 h-1 rounded-full bg-[#04D1FC] mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Layouts Submenu */}

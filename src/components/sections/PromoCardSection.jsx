@@ -25,6 +25,7 @@ function PromoCardSection({
   imageHeight = 180,
   imageFit = 'cover',
   imageRadius = 12,
+  imageBgColor = '#E8E8E8',
   showImagePlaceholder = true,
   // Colors
   backgroundColor = '#F5F5F7',
@@ -164,7 +165,7 @@ function PromoCardSection({
     height: `${imageHeight}px`,
     borderRadius: `${imageRadius}px`,
     overflow: 'hidden',
-    backgroundColor: '#E8E8E8',
+    backgroundColor: imageBgColor === 'transparent' ? 'transparent' : imageBgColor,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

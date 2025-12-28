@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save, Plus, Minus, LogIn, FolderOpen, Upload, FileJson } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
+import { ClipboardProvider } from './context/ClipboardContext';
 import { useAuth } from './context/AuthContext';
 import TemplateSelector from './components/TemplateSelector';
 import ProjectsDashboard from './components/ProjectsDashboard';
@@ -1307,6 +1308,12 @@ function AppContent() {
         {/* Floating Toolbar - Add Section + Reorder */}
         <FloatingToolbar
           onAddSection={handleAddSection}
+          onPasteSection={(section) => {
+            // Add the pasted section to the current newsletter
+            if (workspace.activeNewsletterId) {
+              workspace.addSection(section);
+            }
+          }}
           hasActiveNewsletter={!!workspace.activeNewsletterId}
           isUnlocked={isUnlocked}
           onToggleUnlock={() => setIsUnlocked(prev => !prev)}
@@ -1445,7 +1452,9 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ClipboardProvider>
+        <AppContent />
+      </ClipboardProvider>
     </ThemeProvider>
   );
 }
@@ -1495,6 +1504,7 @@ function getDefaultSectionData(sectionType) {
       borderRadius: 0
     },
     styledTitle: {
+      layout: 'default', // 'default' | 'strip-left' | 'strip-right'
       backgroundColor: '#7B68EE',
       gradientEnd: '#9370DB',
       backgroundType: 'gradient',
@@ -1504,33 +1514,47 @@ function getDefaultSectionData(sectionType) {
       logo: null,
       logoWidth: 120,
       logoAlignment: 'center',
+      // Strip image (for strip layouts)
+      stripImage: null,
+      stripImageWidth: 180,
+      stripImageHeight: 'auto',
+      stripImageBorderRadius: '50%',
       segments: [
-        { id: '1', text: 'Electreo', fontWeight: '700', fontStyle: 'normal', color: '#FFFFFF' },
-        { id: '2', text: 'News', fontWeight: '300', fontStyle: 'italic', color: '#FFFFFF' }
+        { id: '1', text: 'כותרת', fontWeight: '700', fontStyle: 'normal', color: '#FFFFFF' }
       ],
-      fontSize: 72,
+      fontSize: 48,
       letterSpacing: '-0.02em',
       lineHeight: 1.1,
-      textAlign: 'center',
-      fontFamily: 'Poppins',
+      textAlign: 'right',
+      fontFamily: 'Noto Sans Hebrew',
       subtitle: '',
       subtitleFontSize: 18,
       subtitleFontWeight: '400',
       subtitleColor: '#FFFFFF',
       subtitleOpacity: 0.8,
-      paddingTop: 48,
-      paddingBottom: 48,
+      paddingTop: 24,
+      paddingBottom: 24,
       paddingHorizontal: 24,
       spacingLogoToTitle: 24,
       spacingTitleToSubtitle: 16,
-      textDirection: 'ltr',
+      spacingTitleToImage: 24,
+      textDirection: 'rtl',
+      // Decorative image (legacy)
+      showDecorativeImage: false,
+      decorativeImage: null,
+      decorativeImageWidth: 150,
+      decorativeImageHeight: 'auto',
+      decorativeImagePosition: 'center',
+      decorativeImageOffsetX: 0,
+      decorativeImageOffsetY: 0,
+      decorativeImageClip: true,
       // Outer wrapper
       outerBackgroundColor: 'transparent',
       outerPaddingTop: 0,
       outerPaddingRight: 0,
       outerPaddingBottom: 0,
       outerPaddingLeft: 0,
-      borderRadius: 0
+      borderRadius: 16
     },
     marquee: {
       items: '🎉 New Announcement,⭐ Special Offer,🚀 Coming Soon,💡 Did You Know',
