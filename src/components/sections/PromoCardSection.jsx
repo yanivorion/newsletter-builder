@@ -1,186 +1,74 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { ImageIcon } from 'lucide-react';
+import React from 'react';
+import { Image } from 'lucide-react';
 
-const FONT_STACKS = {
-  'Noto Sans Hebrew': "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif",
-  'Poppins': "'Poppins', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-  'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-  'Assistant': "'Assistant', 'Arial Hebrew', Arial, sans-serif",
-  'Heebo': "'Heebo', 'Arial Hebrew', Arial, sans-serif"
-};
-
+/**
+ * PromoCardSection - A promotional card with image and CTA
+ * 
+ * Features:
+ * - Title + body text
+ * - Image placeholder/upload
+ * - CTA link with arrow
+ * - RTL/LTR support
+ * - Flexible layout (image left or right)
+ */
 function PromoCardSection({
-  // Content
-  title = 'טיפים מאפליקציית Wix',
-  description = 'אפשרו לעסקים קטנים לקבל תשלומי Venmo ישירות מהטלפונים של הלקוחות. לאחר חיבור PayPal כספק תשלום, Venmo מופעל אוטומטית בקופה.',
-  ctaText = 'למידע נוסף ←',
-  ctaUrl = '#',
-  image = '',
-  // Layout
-  layout = 'image-left', // 'image-left', 'image-right', 'image-top', 'no-image', 'text-only'
-  contentAlign = 'right', // 'left', 'center', 'right'
-  verticalAlign = 'center', // 'top', 'center', 'bottom'
-  // Image settings
-  imageWidth = 200,
-  imageHeight = 180,
-  imageFit = 'cover',
-  imageRadius = 12,
-  imageBgColor = '#E8E8E8',
-  showImagePlaceholder = true,
-  // Colors
-  backgroundColor = '#F5F5F7',
-  titleColor = '#1D1D1F',
-  descColor = '#666666',
-  ctaColor = '#1D1D1F',
-  // Typography
-  fontFamily = 'Noto Sans Hebrew',
-  titleFontSize = 24,
-  titleFontWeight = '600',
-  descFontSize = 15,
-  descFontWeight = '400',
-  ctaFontSize = 14,
+  // Title
+  title = 'Card Title',
+  titleFontSize = 28,
+  titleFontWeight = '700',
+  titleColor = '#1A1A1A',
+  
+  // Body
+  body = 'Add your promotional content here. Describe the feature, benefit, or announcement.',
+  bodyFontSize = 16,
+  bodyLineHeight = 1.7,
+  bodyColor = '#555555',
+  
+  // CTA
+  ctaText = 'Learn More →',
+  ctaColor = '#04D1FC',
+  ctaFontSize = 16,
   ctaFontWeight = '500',
-  lineHeight = 1.6,
-  // Spacing
-  paddingVertical = 32,
-  paddingHorizontal = 32,
-  contentGap = 24,
-  textGap = 12,
-  // RTL
-  textDirection = 'rtl',
-  // CTA style
+  ctaLink = '#',
   showCta = true,
-  ctaStyle = 'link', // 'link', 'button'
-  ctaButtonBg = '#1D1D1F',
-  ctaButtonColor = '#FFFFFF',
-  // Border
-  showBorder = false,
-  borderColor = '#E5E5E5',
-  borderRadius = 0,
-  // Divider
-  dividerBottom = false,
-  dividerColor = '#E5E5E5',
-  dividerThickness = 1,
-  // Edit mode
-  isSelected = false,
-  onTextChange,
-  onImageUpload
+  
+  // Image
+  image = null,
+  imagePosition = 'right', // 'left' or 'right'
+  imageWidth = 200,
+  imageHeight = 160,
+  imageBorderRadius = 12,
+  showImagePlaceholder = true,
+  
+  // Container
+  backgroundColor = '#F8F9FA',
+  padding = 32,
+  borderRadius = 16,
+  gap = 24,
+  direction = 'rtl',
+  fontFamily = 'Noto Sans Hebrew',
+  
+  // Alignment  
+  contentAlign = 'right', // for RTL text alignment
+  verticalAlign = 'center' // 'top', 'center', 'bottom'
 }) {
-  const fontStack = FONT_STACKS[fontFamily] || FONT_STACKS['Noto Sans Hebrew'];
-  const [editingField, setEditingField] = useState(null);
-  const editRef = useRef(null);
-  const fileInputRef = useRef(null);
-
-  const handleDoubleClick = useCallback((field, e) => {
-    if (!onTextChange) return;
-    e.stopPropagation();
-    setEditingField(field);
-  }, [onTextChange]);
-
-  const handleBlur = useCallback((field) => {
-    if (editRef.current && onTextChange) {
-      const newValue = editRef.current.innerText.trim();
-      onTextChange(field, newValue);
-    }
-    setEditingField(null);
-  }, [onTextChange]);
-
-  const handleKeyDown = useCallback((field, e) => {
-    if (e.key === 'Escape') {
-      setEditingField(null);
-    } else if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleBlur(field);
-    }
-  }, [handleBlur]);
-
-  useEffect(() => {
-    if (editingField && editRef.current) {
-      editRef.current.focus();
-      const range = document.createRange();
-      range.selectNodeContents(editRef.current);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-  }, [editingField]);
-
-  const handleImageClick = () => {
-    if (isSelected && fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file && onImageUpload) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        onImageUpload(event.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const isHorizontal = layout === 'image-left' || layout === 'image-right';
-  const showImage = layout !== 'text-only' && layout !== 'no-image';
-  const isImageFirst = layout === 'image-left' || layout === 'image-top';
-  const isRTL = textDirection === 'rtl';
-
-  // For flexbox align-items in a column container with RTL direction,
-  // flex-start/flex-end are affected by the direction
-  const getAlignItems = () => {
-    if (contentAlign === 'center') return 'center';
-    if (isRTL) {
-      // In RTL column flex, flex-start = right side, flex-end = left side
-      return contentAlign === 'left' ? 'flex-end' : 'flex-start';
-    }
-    return contentAlign === 'left' ? 'flex-start' : 'flex-end';
-  };
-
   const containerStyle = {
     backgroundColor,
-    padding: `${paddingVertical}px ${paddingHorizontal}px`,
-    fontFamily: fontStack,
-    direction: textDirection,
-    borderBottom: dividerBottom ? `${dividerThickness}px solid ${dividerColor}` : 'none',
-    border: showBorder ? `1px solid ${borderColor}` : 'none',
-    borderRadius: borderRadius ? `${borderRadius}px` : 0
-  };
-
-  // margin-left/margin-right are physical properties, not affected by direction
-  const contentWrapperStyle = {
+    padding: `${padding}px`,
+    borderRadius: `${borderRadius}px`,
+    direction,
+    fontFamily: `'${fontFamily}', Arial, sans-serif`,
     display: 'flex',
-    flexDirection: isHorizontal ? 'row' : 'column',
-    alignItems: verticalAlign === 'top' ? 'flex-start' : verticalAlign === 'bottom' ? 'flex-end' : 'center',
-    gap: `${contentGap}px`,
-    maxWidth: '800px',
-    margin: contentAlign === 'center' ? '0 auto' : contentAlign === 'left' ? '0 auto 0 0' : '0 0 0 auto'
+    flexDirection: direction === 'rtl' 
+      ? (imagePosition === 'right' ? 'row' : 'row-reverse')
+      : (imagePosition === 'right' ? 'row-reverse' : 'row'),
+    gap: `${gap}px`,
+    alignItems: verticalAlign === 'top' ? 'flex-start' : verticalAlign === 'bottom' ? 'flex-end' : 'center'
   };
 
-  const imageContainerStyle = {
-    flexShrink: 0,
-    width: isHorizontal ? `${imageWidth}px` : '100%',
-    height: `${imageHeight}px`,
-    borderRadius: `${imageRadius}px`,
-    overflow: 'hidden',
-    backgroundColor: imageBgColor === 'transparent' ? 'transparent' : imageBgColor,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: isSelected ? 'pointer' : 'default',
-    order: isImageFirst ? 0 : 1
-  };
-
-  // text-align left/right are physical properties, not affected by direction
-  const textContainerStyle = {
+  const contentStyle = {
     flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: `${textGap}px`,
-    textAlign: contentAlign,
-    alignItems: getAlignItems()
+    textAlign: contentAlign
   };
 
   const titleStyle = {
@@ -188,172 +76,88 @@ function PromoCardSection({
     fontWeight: titleFontWeight,
     color: titleColor,
     margin: 0,
-    lineHeight: 1.3,
-    cursor: isSelected ? 'text' : 'default'
+    marginBottom: '16px',
+    lineHeight: 1.3
   };
 
-  const descStyle = {
-    fontSize: `${descFontSize}px`,
-    fontWeight: descFontWeight,
-    color: descColor,
+  const bodyStyle = {
+    fontSize: `${bodyFontSize}px`,
+    lineHeight: bodyLineHeight,
+    color: bodyColor,
     margin: 0,
-    lineHeight,
-    cursor: isSelected ? 'text' : 'default',
-    maxWidth: contentAlign === 'center' ? '500px' : 'none'
+    marginBottom: showCta ? '20px' : 0
   };
 
-  const ctaLinkStyle = {
-    fontSize: `${ctaFontSize}px`,
-    fontWeight: ctaFontWeight,
+  const ctaStyle = {
+    display: 'inline-block',
     color: ctaColor,
-    textDecoration: 'none',
-    cursor: isSelected ? 'text' : 'pointer',
-    display: 'inline-block',
-    marginTop: '4px'
-  };
-
-  const ctaButtonStyle = {
     fontSize: `${ctaFontSize}px`,
     fontWeight: ctaFontWeight,
-    color: ctaButtonColor,
-    backgroundColor: ctaButtonBg,
-    padding: '10px 20px',
-    borderRadius: '6px',
     textDecoration: 'none',
-    cursor: isSelected ? 'text' : 'pointer',
-    display: 'inline-block',
-    marginTop: '8px',
-    border: 'none'
+    cursor: 'pointer'
   };
 
-  const renderImage = () => {
-    if (!showImage) return null;
-
-    return (
-      <div style={imageContainerStyle} onClick={handleImageClick}>
-        {image ? (
-          <img 
-            src={image} 
-            alt={title}
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              objectFit: imageFit 
-            }} 
-          />
-        ) : showImagePlaceholder ? (
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            gap: '8px',
-            color: '#999'
-          }}>
-            <ImageIcon size={32} strokeWidth={1.5} />
-            {isSelected && <span style={{ fontSize: '11px' }}>Click to add image</span>}
-          </div>
-        ) : null}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-      </div>
-    );
+  const imageContainerStyle = {
+    width: `${imageWidth}px`,
+    height: `${imageHeight}px`,
+    borderRadius: `${imageBorderRadius}px`,
+    overflow: 'hidden',
+    flexShrink: 0,
+    backgroundColor: '#EAEAEA',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   };
 
-  const renderContent = () => (
-    <div style={textContainerStyle}>
-      {/* Title */}
-      <h3
-        ref={editingField === 'title' ? editRef : null}
-        contentEditable={editingField === 'title'}
-        suppressContentEditableWarning
-        onDoubleClick={(e) => handleDoubleClick('title', e)}
-        onBlur={() => editingField === 'title' && handleBlur('title')}
-        onKeyDown={(e) => editingField === 'title' && handleKeyDown('title', e)}
-        style={titleStyle}
-      >
-        {title}
-      </h3>
+  const imageStyle = {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover'
+  };
 
-      {/* Description */}
-      <p
-        ref={editingField === 'description' ? editRef : null}
-        contentEditable={editingField === 'description'}
-        suppressContentEditableWarning
-        onDoubleClick={(e) => handleDoubleClick('description', e)}
-        onBlur={() => editingField === 'description' && handleBlur('description')}
-        onKeyDown={(e) => editingField === 'description' && handleKeyDown('description', e)}
-        style={descStyle}
-      >
-        {description}
-      </p>
+  const placeholderStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    color: '#999',
+    fontSize: '12px'
+  };
 
-      {/* CTA */}
-      {showCta && (
-        ctaStyle === 'button' ? (
-          <button
-            ref={editingField === 'ctaText' ? editRef : null}
-            contentEditable={editingField === 'ctaText'}
-            suppressContentEditableWarning
-            onDoubleClick={(e) => handleDoubleClick('ctaText', e)}
-            onBlur={() => editingField === 'ctaText' && handleBlur('ctaText')}
-            onKeyDown={(e) => editingField === 'ctaText' && handleKeyDown('ctaText', e)}
-            style={ctaButtonStyle}
-          >
-            {ctaText}
-          </button>
-        ) : (
-          <a
-            ref={editingField === 'ctaText' ? editRef : null}
-            contentEditable={editingField === 'ctaText'}
-            suppressContentEditableWarning
-            onDoubleClick={(e) => handleDoubleClick('ctaText', e)}
-            onBlur={() => editingField === 'ctaText' && handleBlur('ctaText')}
-            onKeyDown={(e) => editingField === 'ctaText' && handleKeyDown('ctaText', e)}
-            href={ctaUrl}
-            style={ctaLinkStyle}
-          >
-            {ctaText}
-          </a>
-        )
-      )}
-    </div>
-  );
+  // Parse body - split by double newlines for paragraphs
+  const paragraphs = body.split('\n\n').filter(p => p.trim());
 
   return (
     <div style={containerStyle}>
-      <div style={contentWrapperStyle}>
-        {isImageFirst ? (
-          <>
-            {renderImage()}
-            {renderContent()}
-          </>
-        ) : (
-          <>
-            {renderContent()}
-            {renderImage()}
-          </>
+      {/* Content */}
+      <div style={contentStyle}>
+        <h3 style={titleStyle}>{title}</h3>
+        <div style={bodyStyle}>
+          {paragraphs.map((paragraph, index) => (
+            <p key={index} style={{ margin: index === 0 ? 0 : '0.8em 0 0 0' }}>
+              {paragraph}
+            </p>
+          ))}
+        </div>
+        {showCta && ctaText && (
+          <a href={ctaLink} style={ctaStyle}>
+            {ctaText}
+          </a>
         )}
       </div>
-
-      {/* Edit hint */}
-      {isSelected && !editingField && (
-        <div style={{
-          position: 'absolute',
-          bottom: '8px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontSize: '10px',
-          color: 'rgba(0,0,0,0.4)',
-          backgroundColor: 'rgba(255,255,255,0.8)',
-          padding: '2px 8px',
-          borderRadius: '4px'
-        }}>
-          Double-click text to edit
+      
+      {/* Image */}
+      {(image || showImagePlaceholder) && (
+        <div style={imageContainerStyle}>
+          {image ? (
+            <img src={image} alt="Promo" style={imageStyle} />
+          ) : (
+            <div style={placeholderStyle}>
+              <Image style={{ width: 32, height: 32, opacity: 0.4 }} />
+              <span>Click to add image</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -361,4 +165,3 @@ function PromoCardSection({
 }
 
 export default PromoCardSection;
-

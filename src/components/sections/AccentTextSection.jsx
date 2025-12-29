@@ -1,279 +1,86 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React from 'react';
 
-const FONT_STACKS = {
-  'Noto Sans Hebrew': "'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif",
-  'Poppins': "'Poppins', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-  'Inter': "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-  'Assistant': "'Assistant', 'Arial Hebrew', Arial, sans-serif",
-  'Heebo': "'Heebo', 'Arial Hebrew', Arial, sans-serif"
-};
-
+/**
+ * AccentTextSection - A text section with a prominent tag/badge
+ * 
+ * Features:
+ * - Colored tag/badge positioned in corner
+ * - Rich text content area
+ * - RTL/LTR support
+ * - Customizable colors
+ */
 function AccentTextSection({
-  tag = 'מילות פתיחה',
-  tagBg = '#04D1FC',
-  tagColor = '#FFFFFF',
-  tagPosition = 'sidebar-right', // 'sidebar-right', 'sidebar-left', 'top-right', 'top-left', 'top-center'
-  tagHeight = 'auto', // 'auto' or number in px
-  tagGap = 24, // gap between tag and content
-  tagOffsetX = 0, // horizontal offset for tag (negative = more right in RTL)
-  content = 'החודש ציינו את יום הטבעונות הבינלאומי עם ארוחת חומוס טעימה במיוחד, הזדמנות נהדרת להתכנס יחד, לטעום, ליהנות ולחוות את האוכל טבעוני.\n\nכמובן שגם חגגנו ימי הולדת לילידי נובמבר, הייתה אווירה חמימה ומשמחת. כמו תמיד היה כיף לראות את כולם מתאחדים כדי לחגוג יחד.',
-  accentColor = '#04D1FC',
-  showAccentBar = false,
-  accentPosition = 'right',
-  accentWidth = 4,
+  // Tag/Badge
+  tagText = 'HIGHLIGHT',
+  tagBackgroundColor = '#04D1FC',
+  tagTextColor = '#FFFFFF',
+  tagPosition = 'top-right', // top-left, top-right
+  tagFontSize = 14,
+  tagPadding = '8px 20px',
+  tagBorderRadius = 8,
+  
+  // Content
+  content = 'Enter your text here...',
+  contentFontSize = 18,
+  contentLineHeight = 1.8,
+  contentColor = '#333333',
+  contentAlign = 'right', // for RTL
+  
+  // Container
   backgroundColor = '#FFFFFF',
-  textColor = '#1D1D1F',
-  fontFamily = 'Noto Sans Hebrew',
-  fontSize = 16,
-  fontWeight = '400',
-  lineHeight = 1.7,
-  paddingVertical = 32,
-  paddingHorizontal = 24,
-  // RTL support
-  textAlign = 'right',
-  textDirection = 'rtl',
-  // Divider
-  dividerBottom = false,
-  dividerColor = '#E5E5E5',
-  dividerThickness = 1,
-  // Inline editing
-  isSelected = false,
-  onTextChange
+  padding = 40,
+  direction = 'rtl',
+  fontFamily = 'Noto Sans Hebrew'
 }) {
-  const fontStack = FONT_STACKS[fontFamily] || FONT_STACKS['Noto Sans Hebrew'];
-  const [editingField, setEditingField] = useState(null);
-  const editRef = useRef(null);
-
-  const handleDoubleClick = useCallback((field, e) => {
-    if (!onTextChange) return;
-    e.stopPropagation();
-    setEditingField(field);
-  }, [onTextChange]);
-
-  const handleBlur = useCallback((field) => {
-    if (editRef.current && onTextChange) {
-      const newValue = editRef.current.innerText.trim();
-      onTextChange(field, newValue);
-    }
-    setEditingField(null);
-  }, [onTextChange]);
-
-  const handleKeyDown = useCallback((field, e) => {
-    if (e.key === 'Escape') {
-      setEditingField(null);
-    } else if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleBlur(field);
-    }
-  }, [handleBlur]);
-
-  useEffect(() => {
-    if (editingField && editRef.current) {
-      editRef.current.focus();
-      const range = document.createRange();
-      const sel = window.getSelection();
-      range.selectNodeContents(editRef.current);
-      range.collapse(false);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    }
-  }, [editingField]);
-
-  useEffect(() => {
-    if (!isSelected) setEditingField(null);
-  }, [isSelected]);
-
-  const hasTag = tag && tag.trim().length > 0;
-  const hasContent = content && content.trim().length > 0;
-  const isSidebarTag = tagPosition === 'sidebar-right' || tagPosition === 'sidebar-left';
-
   const containerStyle = {
     backgroundColor,
-    padding: `${paddingVertical}px ${paddingHorizontal}px`,
-    fontFamily: fontStack,
+    padding: `${padding}px`,
     position: 'relative',
-    borderBottom: dividerBottom ? `${dividerThickness}px solid ${dividerColor}` : 'none'
+    direction,
+    fontFamily: `'${fontFamily}', Arial, sans-serif`
   };
 
-  // Main layout: tag position is VISUAL (not affected by RTL)
-  // For sidebar-right: tag on right visually, content on left
-  // For sidebar-left: tag on left visually, content on right
-  const outerLayoutStyle = {
-    display: 'flex',
-    flexDirection: 'row', // Always LTR order for layout
-    alignItems: 'flex-start',
-    gap: `${tagGap}px`,
-  };
-
-  const contentWrapperStyle = {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: showAccentBar ? '20px' : '0',
-  };
-
-  const innerContentStyle = {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: showAccentBar ? '16px' : '0',
-  };
-
-  const accentStyle = {
-    width: `${accentWidth}px`,
-    backgroundColor: accentColor,
-    borderRadius: '2px',
-    flexShrink: 0,
-    minHeight: '100%'
-  };
-
-  const textContentStyle = {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  };
-
-  // Sidebar tag style (positioned on side)
-  const sidebarTagStyle = {
-    backgroundColor: tagBg,
-    color: tagColor,
-    padding: '12px 20px',
-    borderRadius: '4px',
-    fontSize: '16px',
+  const tagStyle = {
+    position: 'absolute',
+    top: '20px',
+    [tagPosition === 'top-right' ? 'right' : 'left']: '20px',
+    backgroundColor: tagBackgroundColor,
+    color: tagTextColor,
+    padding: tagPadding,
+    borderRadius: `${tagBorderRadius}px`,
+    fontSize: `${tagFontSize}px`,
     fontWeight: '600',
-    whiteSpace: 'nowrap',
-    alignSelf: 'stretch', // Stretch to match content height
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: tagHeight === 'auto' ? 'auto' : `${tagHeight}px`,
-    height: tagHeight === 'auto' ? 'auto' : `${tagHeight}px`,
-    marginRight: tagPosition === 'sidebar-right' ? `${tagOffsetX}px` : 0,
-    marginLeft: tagPosition === 'sidebar-left' ? `${tagOffsetX}px` : 0,
-    cursor: isSelected ? 'text' : 'default',
-    outline: editingField === 'tag' ? '2px dashed #04D1FC' : 'none'
+    letterSpacing: '0.02em',
+    whiteSpace: 'nowrap'
   };
 
-  // Top tag style (positioned above content)
-  const getTopTagContainerStyle = () => {
-    let justifyContent = 'flex-end';
-    if (tagPosition === 'top-left') justifyContent = 'flex-start';
-    if (tagPosition === 'top-center') justifyContent = 'center';
-    return {
-      display: 'flex',
-      justifyContent,
-      marginBottom: '16px',
-    };
+  const contentStyle = {
+    fontSize: `${contentFontSize}px`,
+    lineHeight: contentLineHeight,
+    color: contentColor,
+    textAlign: contentAlign,
+    marginTop: '60px', // Space for the tag
+    paddingTop: '20px'
   };
 
-  const topTagStyle = {
-    display: 'inline-block',
-    backgroundColor: tagBg,
-    color: tagColor,
-    padding: '8px 20px',
-    borderRadius: '4px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: isSelected ? 'text' : 'default',
-    outline: editingField === 'tag' ? '2px dashed #04D1FC' : 'none'
-  };
-
-  const textStyle = {
-    fontSize: `${fontSize}px`,
-    fontWeight,
-    color: textColor,
-    lineHeight,
-    textAlign,
-    direction: textDirection, // Apply RTL/LTR only to text content
-    margin: 0,
-    whiteSpace: 'pre-wrap',
-    cursor: isSelected ? 'text' : 'default',
-    outline: editingField === 'content' ? '2px dashed #04D1FC' : 'none',
-    borderRadius: '4px',
-  };
-
-  const editableProps = (field) => ({
-    ref: editingField === field ? editRef : null,
-    contentEditable: editingField === field,
-    suppressContentEditableWarning: true,
-    onDoubleClick: (e) => handleDoubleClick(field, e),
-    onBlur: () => handleBlur(field),
-    onKeyDown: (e) => handleKeyDown(field, e)
-  });
-
-  // Render tag based on position
-  const renderSidebarTag = () => {
-    if (!isSidebarTag || (!hasTag && !isSelected)) return null;
-    return (
-      <span {...editableProps('tag')} style={sidebarTagStyle}>
-        {tag || (isSelected ? 'תג...' : '')}
-      </span>
-    );
-  };
-
-  const renderTopTag = () => {
-    if (isSidebarTag || (!hasTag && !isSelected)) return null;
-    return (
-      <div style={getTopTagContainerStyle()}>
-        <span {...editableProps('tag')} style={topTagStyle}>
-          {tag || (isSelected ? 'תג...' : '')}
-        </span>
-      </div>
-    );
-  };
+  // Parse content - split by double newlines for paragraphs
+  const paragraphs = content.split('\n\n').filter(p => p.trim());
 
   return (
     <div style={containerStyle}>
-      <div style={outerLayoutStyle}>
-        {/* Sidebar tag on left */}
-        {tagPosition === 'sidebar-left' && renderSidebarTag()}
-        
-        {/* Main content area */}
-        <div style={contentWrapperStyle}>
-          {/* Top-positioned tag */}
-          {renderTopTag()}
-          
-          {/* Content with optional accent bar */}
-          <div style={innerContentStyle}>
-            {/* Accent bar on left */}
-            {showAccentBar && accentPosition === 'left' && <div style={accentStyle} />}
-            
-            <div style={textContentStyle}>
-              {(hasContent || isSelected) && (
-                <p {...editableProps('content')} style={textStyle}>
-                  {content || (isSelected ? 'הכנס טקסט כאן...' : '')}
-                </p>
-              )}
-            </div>
-            
-            {/* Accent bar on right */}
-            {showAccentBar && accentPosition === 'right' && <div style={accentStyle} />}
-          </div>
-        </div>
-        
-        {/* Sidebar tag on right */}
-        {tagPosition === 'sidebar-right' && renderSidebarTag()}
+      {/* Tag/Badge */}
+      <div style={tagStyle}>
+        {tagText}
       </div>
       
-      {isSelected && !editingField && onTextChange && (
-        <div 
-          style={{
-            position: 'absolute',
-            bottom: '8px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontSize: '10px',
-            color: 'rgba(0,0,0,0.4)',
-            backgroundColor: 'rgba(255,255,255,0.8)',
-            padding: '2px 8px',
-            borderRadius: '4px',
-            zIndex: 10
-          }}
-        >
-          Double-click to edit
-        </div>
-      )}
+      {/* Content */}
+      <div style={contentStyle}>
+        {paragraphs.map((paragraph, index) => (
+          <p key={index} style={{ margin: index === 0 ? 0 : '1em 0 0 0' }}>
+            {paragraph}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }

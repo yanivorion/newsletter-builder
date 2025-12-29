@@ -24,12 +24,16 @@ import RecipeSection from './sections/RecipeSection';
 import FooterSection from './sections/FooterSection';
 import MarqueeSection from './sections/MarqueeSection';
 import ImageSequenceSection from './sections/ImageSequenceSection';
+import AccentTextSection from './sections/AccentTextSection';
+import PromoCardSection from './sections/PromoCardSection';
 
 const sectionTypes = [
   { type: 'header', label: 'Header', icon: LayoutTemplate },
   { type: 'marquee', label: 'Marquee', icon: MoveHorizontal },
   { type: 'text', label: 'Text', icon: Type },
   { type: 'sectionHeader', label: 'Title', icon: Heading },
+  { type: 'accentText', label: 'Accent', icon: Type },
+  { type: 'promoCard', label: 'Promo', icon: LayoutTemplate },
   { type: 'imageCollage', label: 'Images', icon: Image },
   { type: 'imageSequence', label: 'Sequence', icon: Film },
   { type: 'profileCards', label: 'Profiles', icon: Users },
@@ -115,6 +119,8 @@ function NewsletterEditor({
       marquee: MarqueeSection,
       text: TextSection,
       sectionHeader: SectionHeaderSection,
+      accentText: AccentTextSection,
+      promoCard: PromoCardSection,
       imageCollage: ImageCollageSection,
       imageSequence: ImageSequenceSection,
       profileCards: ProfileCardsSection,

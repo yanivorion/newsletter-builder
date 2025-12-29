@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   ChevronUp, 
   ChevronDown, 
@@ -118,6 +118,53 @@ function SidebarEditor({
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [isExportingGif, setIsExportingGif] = useState(false);
   const [gifProgress, setGifProgress] = useState(0);
+  const [isContainerExpanded, setIsContainerExpanded] = useState(false);
+  
+  // Ref to preserve scroll position
+  const scrollContainerRef = useRef(null);
+  const scrollPositionRef = useRef(0);
+  
+  // Preserve scroll position on re-render
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    // Save scroll position before any updates
+    const handleScroll = () => {
+      scrollPositionRef.current = container.scrollTop;
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    
+    // Restore scroll position after render
+    if (scrollPositionRef.current > 0) {
+      container.scrollTop = scrollPositionRef.current;
+    }
+    
+    return () => container.removeEventListener('scroll', handleScroll);
+  });
+  
+  // Prevent scroll jump when clicking inputs
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const preventScrollJump = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        // Save current scroll position
+        const currentScroll = container.scrollTop;
+        // Restore after a tiny delay (after browser's default scroll)
+        requestAnimationFrame(() => {
+          if (Math.abs(container.scrollTop - currentScroll) > 50) {
+            container.scrollTop = currentScroll;
+          }
+        });
+      }
+    };
+    
+    container.addEventListener('focusin', preventScrollJump);
+    return () => container.removeEventListener('focusin', preventScrollJump);
+  }, []);
   
   const section = selectedSection 
     ? newsletter?.sections.find(s => s.id === selectedSection)
@@ -180,6 +227,11 @@ function SidebarEditor({
   }, [section, handleFieldChange]);
 
   const handleImageUpload = useCallback(async (file, field) => {
+    // Handle removal (null/undefined)
+    if (!file) {
+      handleFieldChange(field, null);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       handleFieldChange(field, e.target.result);
@@ -240,6 +292,14 @@ function SidebarEditor({
   }, [section, handleFieldChange]);
 
   const handleArrayImageUpload = useCallback(async (file, arrayField, index) => {
+    // Handle removal (null/undefined)
+    if (!file) {
+      const currentArray = section?.[arrayField] || [];
+      const newArray = [...currentArray];
+      newArray[index] = null;
+      handleFieldChange(arrayField, newArray);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const currentArray = section?.[arrayField] || [];
@@ -307,22 +367,21 @@ function SidebarEditor({
   // Container Settings Component
   const renderContainerSettings = () => {
     const container = section?.container || {};
-    const [isExpanded, setIsExpanded] = React.useState(false);
     
     return (
       <div className="mb-6 p-3 bg-gradient-to-br from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200">
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={() => setIsContainerExpanded(!isContainerExpanded)}
           className="w-full flex items-center justify-between text-xs font-semibold text-zinc-600 hover:text-zinc-900"
         >
           <div className="flex items-center gap-2">
             <Layers className="w-3.5 h-3.5" />
             <span>Container Frame</span>
           </div>
-          <ChevronDown className={cn("w-4 h-4 transition-transform", isExpanded && "rotate-180")} />
+          <ChevronDown className={cn("w-4 h-4 transition-transform", isContainerExpanded && "rotate-180")} />
         </button>
         
-        {isExpanded && (
+        {isContainerExpanded && (
           <div className="mt-4 space-y-4">
             {/* Outer Container (Padding/Margin) */}
             <div className="space-y-2">
@@ -433,6 +492,7 @@ function SidebarEditor({
               <ImageUploader
                 currentImage={container.backgroundImage}
                 onImageUpload={(file) => {
+                  if (!file) return;
                   const reader = new FileReader();
                   reader.onload = (e) => handleContainerChange('backgroundImage', e.target.result);
                   reader.readAsDataURL(file);
@@ -1500,6 +1560,10 @@ function SidebarEditor({
                   <ImageUploader
                     currentImage={profile.image}
                     onImageUpload={(file) => {
+                      if (!file) {
+                        handleProfileFieldChange(index, 'image', null);
+                        return;
+                      }
                       const reader = new FileReader();
                       reader.onload = (e) => {
                         handleProfileFieldChange(index, 'image', e.target.result);
@@ -1791,6 +1855,316 @@ function SidebarEditor({
     );
   };
 
+  const renderAccentTextEditor = () => (
+    <div className="space-y-6">
+      {renderContainerSettings()}
+      
+      <FieldGroup label="Tag/Badge">
+        <input
+          type="text"
+          key={`tagText-${selectedSection}`}
+          defaultValue={section.tagText || 'HIGHLIGHT'}
+          onBlur={(e) => handleFieldChange('tagText', e.target.value)}
+          placeholder="Tag text"
+          className="flex h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#04D1FC]"
+        />
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Background</span>
+            <input
+              type="color"
+              value={section.tagBackgroundColor || '#04D1FC'}
+              onChange={(e) => handleFieldChange('tagBackgroundColor', e.target.value)}
+              className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Text Color</span>
+            <input
+              type="color"
+              value={section.tagTextColor || '#FFFFFF'}
+              onChange={(e) => handleFieldChange('tagTextColor', e.target.value)}
+              className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Position</span>
+            <Select
+              value={section.tagPosition || 'top-right'}
+              onChange={(e) => handleFieldChange('tagPosition', e.target.value)}
+              className="h-10"
+            >
+              <option value="top-right">Top Right</option>
+              <option value="top-left">Top Left</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Font Size</span>
+            <NumberInput
+              value={section.tagFontSize || 14}
+              onChange={(val) => handleFieldChange('tagFontSize', val)}
+              suffix="px"
+            />
+          </div>
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Content">
+        <EditableTextarea
+          value={section.content || ''}
+          onChange={(val) => handleFieldChange('content', val)}
+          sectionKey={selectedSection}
+          rows={5}
+          placeholder="Enter content..."
+          className="resize-none"
+        />
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Font Size</span>
+            <NumberInput
+              value={section.contentFontSize || 18}
+              onChange={(val) => handleFieldChange('contentFontSize', val)}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Text Color</span>
+            <input
+              type="color"
+              value={section.contentColor || '#333333'}
+              onChange={(e) => handleFieldChange('contentColor', e.target.value)}
+              className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+            />
+          </div>
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Layout">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Direction</span>
+            <Select
+              value={section.direction || 'rtl'}
+              onChange={(e) => handleFieldChange('direction', e.target.value)}
+              className="h-10"
+            >
+              <option value="rtl">RTL (Hebrew)</option>
+              <option value="ltr">LTR (English)</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Text Align</span>
+            <Select
+              value={section.contentAlign || 'right'}
+              onChange={(e) => handleFieldChange('contentAlign', e.target.value)}
+              className="h-10"
+            >
+              <option value="right">Right</option>
+              <option value="center">Center</option>
+              <option value="left">Left</option>
+            </Select>
+          </div>
+        </div>
+        <div className="space-y-1 mt-2">
+          <span className="text-[10px] text-zinc-400">Background</span>
+          <input
+            type="color"
+            value={section.backgroundColor || '#FFFFFF'}
+            onChange={(e) => handleFieldChange('backgroundColor', e.target.value)}
+            className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+          />
+        </div>
+      </FieldGroup>
+    </div>
+  );
+
+  const renderPromoCardEditor = () => (
+    <div className="space-y-6">
+      {renderContainerSettings()}
+      
+      <FieldGroup label="Title">
+        <input
+          type="text"
+          key={`title-${selectedSection}`}
+          defaultValue={section.title || ''}
+          onBlur={(e) => handleFieldChange('title', e.target.value)}
+          placeholder="Card title"
+          className="flex h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#04D1FC]"
+        />
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Font Size</span>
+            <NumberInput
+              value={section.titleFontSize || 28}
+              onChange={(val) => handleFieldChange('titleFontSize', val)}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Color</span>
+            <input
+              type="color"
+              value={section.titleColor || '#1A1A1A'}
+              onChange={(e) => handleFieldChange('titleColor', e.target.value)}
+              className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+            />
+          </div>
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Body">
+        <EditableTextarea
+          value={section.body || ''}
+          onChange={(val) => handleFieldChange('body', val)}
+          sectionKey={selectedSection}
+          rows={4}
+          placeholder="Card content..."
+          className="resize-none"
+        />
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Font Size</span>
+            <NumberInput
+              value={section.bodyFontSize || 16}
+              onChange={(val) => handleFieldChange('bodyFontSize', val)}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Color</span>
+            <input
+              type="color"
+              value={section.bodyColor || '#555555'}
+              onChange={(e) => handleFieldChange('bodyColor', e.target.value)}
+              className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+            />
+          </div>
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Call to Action">
+        <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer mb-2">
+          <input
+            type="checkbox"
+            checked={section.showCta !== false}
+            onChange={(e) => handleFieldChange('showCta', e.target.checked)}
+            className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC]"
+          />
+          Show CTA link
+        </label>
+        {section.showCta !== false && (
+          <>
+            <input
+              type="text"
+              key={`cta-${selectedSection}`}
+              defaultValue={section.ctaText || ''}
+              onBlur={(e) => handleFieldChange('ctaText', e.target.value)}
+              placeholder="Link text"
+              className="flex h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#04D1FC]"
+            />
+            <div className="space-y-1 mt-2">
+              <span className="text-[10px] text-zinc-400">CTA Color</span>
+              <input
+                type="color"
+                value={section.ctaColor || '#04D1FC'}
+                onChange={(e) => handleFieldChange('ctaColor', e.target.value)}
+                className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+              />
+            </div>
+          </>
+        )}
+      </FieldGroup>
+
+      <FieldGroup label="Image">
+        <ImageUploader
+          currentImage={section.image}
+          onImageUpload={(file) => handleImageUpload(file, 'image')}
+          onRemoveBackground={() => handleRemoveBackground('image')}
+          isProcessing={isProcessing}
+        />
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Position</span>
+            <Select
+              value={section.imagePosition || 'right'}
+              onChange={(e) => handleFieldChange('imagePosition', e.target.value)}
+              className="h-10"
+            >
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Width</span>
+            <NumberInput
+              value={section.imageWidth || 200}
+              onChange={(val) => handleFieldChange('imageWidth', val)}
+              suffix="px"
+            />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer mt-2">
+          <input
+            type="checkbox"
+            checked={section.showImagePlaceholder !== false}
+            onChange={(e) => handleFieldChange('showImagePlaceholder', e.target.checked)}
+            className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC]"
+          />
+          Show placeholder when empty
+        </label>
+      </FieldGroup>
+
+      <FieldGroup label="Card Style">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Background</span>
+            <input
+              type="color"
+              value={section.backgroundColor || '#F8F9FA'}
+              onChange={(e) => handleFieldChange('backgroundColor', e.target.value)}
+              className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Border Radius</span>
+            <NumberInput
+              value={section.borderRadius || 16}
+              onChange={(val) => handleFieldChange('borderRadius', val)}
+              suffix="px"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Direction</span>
+            <Select
+              value={section.direction || 'rtl'}
+              onChange={(e) => handleFieldChange('direction', e.target.value)}
+              className="h-10"
+            >
+              <option value="rtl">RTL (Hebrew)</option>
+              <option value="ltr">LTR (English)</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-zinc-400">Text Align</span>
+            <Select
+              value={section.contentAlign || 'right'}
+              onChange={(e) => handleFieldChange('contentAlign', e.target.value)}
+              className="h-10"
+            >
+              <option value="right">Right</option>
+              <option value="center">Center</option>
+              <option value="left">Left</option>
+            </Select>
+          </div>
+        </div>
+      </FieldGroup>
+    </div>
+  );
+
   const renderEditor = () => {
     if (!section) return null;
     
@@ -1799,12 +2173,14 @@ function SidebarEditor({
       case 'marquee': return renderMarqueeEditor();
       case 'text': return renderTextEditor();
       case 'sectionHeader': return renderSectionHeaderEditor();
+      case 'accentText': return renderAccentTextEditor();
+      case 'promoCard': return renderPromoCardEditor();
       case 'imageCollage': return renderImageCollageEditor();
       case 'imageSequence': return renderImageSequenceEditor();
       case 'profileCards': return renderProfileCardsEditor();
       case 'recipe': return renderRecipeEditor();
       case 'footer': return renderFooterEditor();
-      default: return <p className="text-sm text-zinc-500">Unknown section type</p>;
+      default: return <p className="text-sm text-zinc-500">Unknown section type: {section.type}</p>;
     }
   };
 
@@ -1860,7 +2236,11 @@ function SidebarEditor({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+        style={{ scrollBehavior: 'auto' }}
+      >
         {activeTab === 'edit' && (
           <>
             {!selectedSection ? (
