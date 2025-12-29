@@ -1,20 +1,64 @@
 // Email-compatible HTML export
 // Uses table-based layout with inline styles for maximum email client compatibility
+// Following professional email template patterns (like Beefree)
 
 // Google Fonts URL for email - includes all weights
 const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@100;200;300;400;500;600;700;800;900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap';
 
 // Font stacks with proper fallbacks for email clients
-// Note: Gmail doesn't support web fonts, so fallbacks are important
 const FONT_STACKS = {
   'Poppins': "Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
   'Noto Sans Hebrew': "'Noto Sans Hebrew', 'Arial Hebrew', 'Segoe UI', Arial, sans-serif",
   'Inter': "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  'default': "Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+  'default': "Arial, Helvetica, sans-serif"
 };
 
 function getFontStack(fontFamily) {
   return FONT_STACKS[fontFamily] || FONT_STACKS['default'];
+}
+
+// Wrap content in container frame if present
+function wrapWithContainer(content, container) {
+  if (!container) return content;
+  
+  const outerPaddingTop = container.outerPaddingTop ?? container.outerPadding ?? 0;
+  const outerPaddingBottom = container.outerPaddingBottom ?? container.outerPadding ?? 0;
+  const outerPaddingLeft = container.outerPaddingLeft ?? container.outerPadding ?? 0;
+  const outerPaddingRight = container.outerPaddingRight ?? container.outerPadding ?? 0;
+  const outerBg = container.outerBackgroundColor || 'transparent';
+  
+  const innerBorderWidth = container.innerBorderWidth || 0;
+  const innerBorderColor = container.innerBorderColor || '#E5E5E5';
+  const innerBorderRadius = container.innerBorderRadius || 0;
+  const innerBg = container.innerBackgroundColor || 'transparent';
+  const bgImage = container.backgroundImage;
+  
+  // If no container styling needed, return content as-is
+  if (outerPaddingTop === 0 && outerPaddingBottom === 0 && outerPaddingLeft === 0 && 
+      outerPaddingRight === 0 && outerBg === 'transparent' && innerBorderWidth === 0 && 
+      innerBorderRadius === 0 && innerBg === 'transparent' && !bgImage) {
+    return content;
+  }
+  
+  let innerStyle = `background-color: ${innerBg};`;
+  if (innerBorderWidth > 0) {
+    innerStyle += ` border: ${innerBorderWidth}px solid ${innerBorderColor};`;
+  }
+  if (innerBorderRadius > 0) {
+    innerStyle += ` border-radius: ${innerBorderRadius}px;`;
+  }
+  if (bgImage) {
+    innerStyle += ` background-image: url(${bgImage}); background-size: 100% auto; background-position: center; background-repeat: no-repeat;`;
+  }
+  
+  return `
+    <tr>
+      <td style="background-color: ${outerBg}; padding: ${outerPaddingTop}px ${outerPaddingRight}px ${outerPaddingBottom}px ${outerPaddingLeft}px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; ${innerStyle}">
+          ${content}
+        </table>
+      </td>
+    </tr>`;
 }
 
 export function exportToHTML(newsletter) {
@@ -23,30 +67,42 @@ export function exportToHTML(newsletter) {
   }
 
   const sections = newsletter.sections.map(section => {
+    let content;
     switch (section.type) {
       case 'header':
-        return exportHeader(section);
+        content = exportHeader(section);
+        break;
       case 'marquee':
-        return exportMarquee(section);
+        content = exportMarquee(section);
+        break;
       case 'text':
-        return exportText(section);
+        content = exportText(section);
+        break;
       case 'sectionHeader':
-        return exportSectionHeader(section);
+        content = exportSectionHeader(section);
+        break;
       case 'accentText':
-        return exportAccentText(section);
+        content = exportAccentText(section);
+        break;
       case 'promoCard':
-        return exportPromoCard(section);
+        content = exportPromoCard(section);
+        break;
       case 'imageCollage':
-        return exportImageCollage(section);
+        content = exportImageCollage(section);
+        break;
       case 'profileCards':
-        return exportProfileCards(section);
+        content = exportProfileCards(section);
+        break;
       case 'recipe':
-        return exportRecipe(section);
+        content = exportRecipe(section);
+        break;
       case 'footer':
-        return exportFooter(section);
+        content = exportFooter(section);
+        break;
       default:
-        return '';
+        content = '';
     }
+    return section.container ? wrapWithContainer(content, section.container) : content;
   }).join('\n');
 
   return `<!DOCTYPE html>
@@ -63,36 +119,30 @@ export function exportToHTML(newsletter) {
     <xml>
       <o:OfficeDocumentSettings>
         <o:PixelsPerInch>96</o:PixelsPerInch>
+        <o:AllowPNG/>
       </o:OfficeDocumentSettings>
     </xml>
   </noscript>
   <![endif]-->
   
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="${GOOGLE_FONTS_URL}" rel="stylesheet">
   
   <style type="text/css">
-    /* Google Fonts import as backup */
     @import url('${GOOGLE_FONTS_URL}');
     
-    /* Reset */
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; }
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    img { -ms-interpolation-mode: bicubic; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
     
-    /* Font definitions */
-    body {
-      font-family: ${FONT_STACKS['default']};
-    }
+    .email-container { width: 100% !important; max-width: 600px !important; }
     
-    .font-poppins { font-family: ${FONT_STACKS['Poppins']}; }
-    .font-hebrew { font-family: ${FONT_STACKS['Noto Sans Hebrew']}; }
-    
-    /* Responsive */
     @media screen and (max-width: 600px) {
       .email-container { width: 100% !important; }
+      .stack-column { display: block !important; width: 100% !important; }
     }
   </style>
   
@@ -103,12 +153,22 @@ export function exportToHTML(newsletter) {
   <![endif]-->
 </head>
 <body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: ${FONT_STACKS['default']}; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f4f4f4;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f4f4f4;">
     <tr>
-      <td align="center" style="padding: 20px 0;">
-        <table role="presentation" class="email-container" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px;">
+      <td align="center" style="padding: 20px 10px;">
+        <!--[if mso]>
+        <table role="presentation" align="center" border="0" cellspacing="0" cellpadding="0" width="600">
+        <tr>
+        <td>
+        <![endif]-->
+        <table role="presentation" class="email-container" width="600" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff; margin: 0 auto;">
           ${sections}
         </table>
+        <!--[if mso]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
       </td>
     </tr>
   </table>
@@ -116,58 +176,66 @@ export function exportToHTML(newsletter) {
 </html>`;
 }
 
-// Export just the content table for pasting into Gmail
+// Export for Gmail paste - cleaner version without full HTML structure
 export function exportForGmail(newsletter) {
   if (!newsletter || !newsletter.sections) {
     return '';
   }
 
   const sections = newsletter.sections.map(section => {
+    let content;
     switch (section.type) {
       case 'header':
-        return exportHeader(section);
+        content = exportHeader(section);
+        break;
       case 'marquee':
-        return exportMarquee(section);
+        content = exportMarquee(section);
+        break;
       case 'text':
-        return exportText(section);
+        content = exportText(section);
+        break;
       case 'sectionHeader':
-        return exportSectionHeader(section);
+        content = exportSectionHeader(section);
+        break;
       case 'accentText':
-        return exportAccentText(section);
+        content = exportAccentText(section);
+        break;
       case 'promoCard':
-        return exportPromoCard(section);
+        content = exportPromoCard(section);
+        break;
       case 'imageCollage':
-        return exportImageCollage(section);
+        content = exportImageCollage(section);
+        break;
       case 'profileCards':
-        return exportProfileCards(section);
+        content = exportProfileCards(section);
+        break;
       case 'recipe':
-        return exportRecipe(section);
+        content = exportRecipe(section);
+        break;
       case 'footer':
-        return exportFooter(section);
+        content = exportFooter(section);
+        break;
       default:
-        return '';
+        content = '';
     }
+    return section.container ? wrapWithContainer(content, section.container) : content;
   }).join('\n');
 
-  // For Gmail paste, use 80% width with max-width to prevent overflow
-  return `<style>
-@import url('${GOOGLE_FONTS_URL}');
-</style>
-<table role="presentation" width="80%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px; width: 80%; margin: 0 auto; font-family: ${FONT_STACKS['default']};">
+  // For Gmail, use 80% width centered with max-width
+  return `<style>@import url('${GOOGLE_FONTS_URL}');</style>
+<table role="presentation" align="center" width="80%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px; width: 80%; margin: 0 auto; font-family: ${FONT_STACKS['default']}; mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
   ${sections}
 </table>`;
 }
 
 function exportHeader(section) {
   const bgStyle = section.gradientEnd 
-    ? `background: linear-gradient(180deg, ${section.backgroundColor} 0%, ${section.gradientEnd} 100%); background-color: ${section.backgroundColor};`
-    : `background-color: ${section.backgroundColor};`;
+    ? `background: linear-gradient(180deg, ${section.backgroundColor || '#4A90D9'} 0%, ${section.gradientEnd} 100%); background-color: ${section.backgroundColor || '#4A90D9'};`
+    : `background-color: ${section.backgroundColor || '#4A90D9'};`;
 
   const logoWidth = section.logoWidth || 120;
   const logoHeight = section.logoHeight === 'auto' ? 'auto' : `${section.logoHeight}px`;
   const logoAlignment = section.logoAlignment || 'center';
-  const logoMargin = logoAlignment === 'left' ? '0 auto 20px 0' : 
-                     logoAlignment === 'right' ? '0 0 20px auto' : '0 auto 20px';
   
   const titleFontSize = section.titleFontSize || 28;
   const titleFontWeight = section.titleFontWeight || '700';
@@ -177,51 +245,55 @@ function exportHeader(section) {
   
   const subtitleFontSize = section.subtitleFontSize || 16;
   const subtitleFontWeight = section.subtitleFontWeight || '400';
-  const subtitleLetterSpacing = section.subtitleLetterSpacing || '0';
-  
   const textColor = section.textColor || '#ffffff';
   const fontStack = FONT_STACKS['Poppins'];
 
-  // Build title
-  const titleHtml = `<h1 style="margin: 0 0 10px; font-size: ${titleFontSize}px; font-weight: ${titleFontWeight}; font-style: ${titleFontStyle}; letter-spacing: ${titleLetterSpacing}; font-family: ${fontStack}; line-height: ${titleLineHeight}; color: ${textColor};">
-    ${section.title || ''}
-  </h1>`;
-
   // Date badge
-  const dateBadgeHtml = section.showDateBadge && section.dateBadgeText ? `
-    <div style="position: absolute; bottom: 16px; right: 16px; background-color: ${section.dateBadgeBg || '#04D1FC'}; color: ${section.dateBadgeColor || '#ffffff'}; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: ${fontStack}; letter-spacing: 0.05em;">
-      ${section.dateBadgeText}
-    </div>` : '';
-
-  // For email, we can't use position: absolute reliably, so we'll use a table-based approach for the badge
-  const badgeRow = section.showDateBadge && section.dateBadgeText ? `
+  const badgeHtml = section.showDateBadge && section.dateBadgeText ? `
     <tr>
-      <td align="right" style="padding: 0 20px 20px;">
-        <span style="background-color: ${section.dateBadgeBg || '#04D1FC'}; color: ${section.dateBadgeColor || '#ffffff'}; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: ${fontStack}; letter-spacing: 0.05em; display: inline-block;">
-          ${section.dateBadgeText}
-        </span>
+      <td align="right" style="padding: 0 20px 16px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+          <tr>
+            <td style="background-color: ${section.dateBadgeBg || '#04D1FC'}; color: ${section.dateBadgeColor || '#ffffff'}; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: ${fontStack}; letter-spacing: 0.05em;">
+              ${section.dateBadgeText}
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>` : '';
 
   // Hero image
   const heroImageHeight = section.heroImageHeight || 200;
-  const heroImageFit = section.heroImageFit || 'cover';
   const heroImageHtml = section.heroImage ? `
-    <img src="${section.heroImage}" alt="Hero" style="width: 100%; height: ${heroImageHeight}px; max-width: 100%; display: block; margin: 0 auto 24px; object-fit: ${heroImageFit}; border-radius: 8px;" />
-  ` : '';
+    <tr>
+      <td align="center" style="padding: 0 20px 24px;">
+        <img src="${section.heroImage}" alt="Hero" width="560" style="width: 100%; max-width: 560px; height: ${heroImageHeight}px; display: block; object-fit: cover; border-radius: 8px;" />
+      </td>
+    </tr>` : '';
 
   return `
     <tr>
-      <td style="${bgStyle} padding: 40px 20px ${section.showDateBadge ? '10px' : '40px'}; text-align: ${logoAlignment === 'center' ? 'center' : logoAlignment}; color: ${textColor};">
-        ${section.logo ? `<img src="${section.logo}" alt="Logo" style="width: ${logoWidth}px; height: ${logoHeight}; max-width: 100%; display: block; margin: ${logoMargin}; object-fit: contain;" />` : ''}
-        ${heroImageHtml}
-        <div style="text-align: center;">
-          ${titleHtml}
-          ${section.subtitle ? `<p style="margin: 0; font-size: ${subtitleFontSize}px; font-weight: ${subtitleFontWeight}; letter-spacing: ${subtitleLetterSpacing}; opacity: 0.95; font-family: ${fontStack}; line-height: 1.4; color: ${textColor};">${section.subtitle}</p>` : ''}
-        </div>
+      <td style="${bgStyle}">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+          ${section.logo ? `
+          <tr>
+            <td align="${logoAlignment}" style="padding: 40px 20px 20px;">
+              <img src="${section.logo}" alt="Logo" width="${logoWidth}" style="width: ${logoWidth}px; height: ${logoHeight}; display: block; object-fit: contain;" />
+            </td>
+          </tr>` : ''}
+          ${heroImageHtml}
+          <tr>
+            <td align="center" style="padding: 0 20px ${section.showDateBadge ? '20px' : '40px'};">
+              <h1 style="margin: 0 0 10px; font-size: ${titleFontSize}px; font-weight: ${titleFontWeight}; font-style: ${titleFontStyle}; letter-spacing: ${titleLetterSpacing}; font-family: ${fontStack}; line-height: ${titleLineHeight}; color: ${textColor};">
+                ${section.title || ''}
+              </h1>
+              ${section.subtitle ? `<p style="margin: 0; font-size: ${subtitleFontSize}px; font-weight: ${subtitleFontWeight}; opacity: 0.95; font-family: ${fontStack}; line-height: 1.4; color: ${textColor};">${section.subtitle}</p>` : ''}
+            </td>
+          </tr>
+          ${badgeHtml}
+        </table>
       </td>
-    </tr>
-    ${badgeRow}`;
+    </tr>`;
 }
 
 function exportMarquee(section) {
@@ -234,7 +306,7 @@ function exportMarquee(section) {
   
   const itemsHtml = items.map((item, i) => {
     const sep = i < items.length - 1 
-      ? `<span style="opacity: 0.5; margin: 0 16px;">${separator}</span>` 
+      ? `<span style="opacity: 0.5; margin: 0 12px;">${separator}</span>` 
       : '';
     return `<span style="white-space: nowrap;">${item}</span>${sep}`;
   }).join('');
@@ -267,7 +339,6 @@ function exportSectionHeader(section) {
   const gradientEnd = section.gradientEnd;
   const gradientDirection = section.gradientDirection || '90deg';
   
-  // Build background style with gradient support
   const bgStyle = gradientEnd 
     ? `background: linear-gradient(${gradientDirection}, ${bgColor} 0%, ${gradientEnd} 100%); background-color: ${bgColor};`
     : `background-color: ${bgColor};`;
@@ -276,11 +347,19 @@ function exportSectionHeader(section) {
   const paddingBottom = section.paddingBottom ?? section.padding ?? 14;
   const paddingLeft = section.paddingLeft ?? 24;
   const paddingRight = section.paddingRight ?? 24;
+  const borderRadius = section.borderRadius || 0;
   
+  // Use table for border-radius support
   return `
     <tr>
-      <td style="${bgStyle} color: ${section.color || '#ffffff'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; text-align: center; font-family: ${fontStack}; font-size: ${section.fontSize || 14}px; font-weight: ${section.fontWeight || 600}; letter-spacing: ${section.letterSpacing || '0.08em'}; text-transform: uppercase;">
-        ${section.text || ''}
+      <td style="padding: 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+          <tr>
+            <td style="${bgStyle} color: ${section.color || '#ffffff'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; text-align: center; font-family: ${fontStack}; font-size: ${section.fontSize || 14}px; font-weight: ${section.fontWeight || 600}; letter-spacing: ${section.letterSpacing || '0.08em'}; text-transform: uppercase; border-radius: ${borderRadius}px;">
+              ${section.text || ''}
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>`;
 }
@@ -295,34 +374,36 @@ function exportAccentText(section) {
   const paddingBottom = section.paddingBottom ?? padding;
   const paddingLeft = section.paddingLeft ?? padding;
   const paddingRight = section.paddingRight ?? padding;
-  const tagToContentGap = section.tagToContentGap ?? 60;
+  const tagToContentGap = section.tagToContentGap ?? 40;
   
   const content = (section.content || '').replace(/\n\n/g, '</p><p style="margin: 0 0 1em;">').replace(/\n/g, '<br>');
   
-  // Tag badge - positioned correctly with proper alignment and centered text
+  // Tag badge - use nested table for proper centering
   const tagAlign = section.tagPosition === 'top-left' ? 'left' : 'right';
   const tagHtml = section.tagText ? `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-      <tr>
-        <td align="${tagAlign}" style="padding-bottom: ${tagToContentGap}px;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="display: inline-table;">
-            <tr>
-              <td style="background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 10px 24px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack}; text-align: center; vertical-align: middle; line-height: 1.2;">
-                ${section.tagText}
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>` : '';
+    <tr>
+      <td align="${tagAlign}" style="padding-bottom: ${tagToContentGap}px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+          <tr>
+            <td align="center" valign="middle" style="background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 10px 24px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack}; line-height: 1.2; mso-padding-alt: 12px 24px;">
+              ${section.tagText}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>` : '';
   
   return `
     <tr>
-      <td dir="${direction}" style="background-color: ${section.backgroundColor || '#FFFFFF'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; font-family: ${fontStack};">
-        ${tagHtml}
-        <div style="font-size: ${section.contentFontSize || 18}px; line-height: ${section.contentLineHeight || 1.8}; color: ${section.contentColor || '#333333'}; text-align: ${textAlign};">
-          <p style="margin: 0;">${content}</p>
-        </div>
+      <td dir="${direction}" style="background-color: ${section.backgroundColor || '#FFFFFF'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-family: ${fontStack};">
+          ${tagHtml}
+          <tr>
+            <td style="font-size: ${section.contentFontSize || 18}px; line-height: ${section.contentLineHeight || 1.8}; color: ${section.contentColor || '#333333'}; text-align: ${textAlign}; font-family: ${fontStack};">
+              <p style="margin: 0;">${content}</p>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>`;
 }
@@ -339,20 +420,27 @@ function exportPromoCard(section) {
   const paddingRight = section.paddingRight ?? padding;
   const titleToBodyGap = section.titleToBodyGap ?? 16;
   const bodyToCtaGap = section.bodyToCtaGap ?? 20;
+  const gap = section.gap || 24;
   
   const body = (section.body || '').replace(/\n\n/g, '</p><p style="margin: 0.8em 0 0;">').replace(/\n/g, '<br>');
+  
+  // Image and content widths
+  const imageWidth = section.imageWidth || 200;
+  const contentWidth = 560 - imageWidth - gap; // 560 = 600 - 40px padding
   
   // Determine layout based on direction and image position
   const imagePosition = section.imagePosition || 'right';
   const isImageFirst = (direction === 'rtl' && imagePosition === 'right') || (direction === 'ltr' && imagePosition === 'left');
   
-  const imageHtml = section.image ? `
-    <td width="${section.imageWidth || 200}" style="vertical-align: ${section.verticalAlign || 'center'};">
-      <img src="${section.image}" alt="Promo" style="width: ${section.imageWidth || 200}px; height: ${section.imageHeight || 160}px; display: block; object-fit: cover; border-radius: ${section.imageBorderRadius || 12}px;" />
+  const imageCell = section.image ? `
+    <td width="${imageWidth}" valign="${section.verticalAlign || 'middle'}" style="vertical-align: ${section.verticalAlign || 'middle'};">
+      <img src="${section.image}" alt="Promo" width="${imageWidth}" style="width: ${imageWidth}px; height: ${section.imageHeight || 160}px; display: block; object-fit: cover; border-radius: ${section.imageBorderRadius || 12}px;" />
     </td>` : '';
   
-  const contentHtml = `
-    <td style="vertical-align: ${section.verticalAlign || 'center'}; text-align: ${textAlign}; padding: ${isImageFirst ? '0 0 0 ' + (section.gap || 24) + 'px' : '0 ' + (section.gap || 24) + 'px 0 0'};">
+  const gapCell = section.image ? `<td width="${gap}" style="width: ${gap}px;"></td>` : '';
+  
+  const contentCell = `
+    <td valign="${section.verticalAlign || 'middle'}" style="vertical-align: ${section.verticalAlign || 'middle'}; text-align: ${textAlign};">
       <h3 style="margin: 0 0 ${titleToBodyGap}px; font-family: ${fontStack}; font-size: ${section.titleFontSize || 28}px; font-weight: ${section.titleFontWeight || 700}; color: ${section.titleColor || '#1A1A1A'}; line-height: 1.3;">
         ${section.title || 'Card Title'}
       </h3>
@@ -365,19 +453,23 @@ function exportPromoCard(section) {
         </a>` : ''}
     </td>`;
   
+  const rowContent = isImageFirst 
+    ? imageCell + gapCell + contentCell 
+    : contentCell + gapCell + imageCell;
+  
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#F8F9FA'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; border-radius: ${section.borderRadius || 16}px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" dir="${direction}">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" dir="${direction}" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
           <tr>
-            ${isImageFirst ? imageHtml + contentHtml : contentHtml + imageHtml}
+            ${rowContent}
           </tr>
         </table>
       </td>
     </tr>`;
 }
 
-// Collage layout presets - mirroring the main app's presets
+// Collage layout presets
 const COLLAGE_PRESETS = {
   'single': [[1]],
   'single-wide': [[1, 1]],
@@ -410,12 +502,28 @@ const COLLAGE_PRESETS = {
   '5-bottom-row': [[1, 1, 2], [3, 4, 5]],
   '5-featured-left': [[1, 1, 2, 3], [1, 1, 4, 5]],
   '5-featured-right': [[1, 2, 3, 3], [4, 5, 3, 3]],
+  '5-cross': [[1, 2, 2, 3], [4, 2, 2, 5]],
+  '5-gallery': [[1, 1, 2, 2], [3, 4, 4, 5]],
+  '5-pinterest': [[1, 1, 2], [1, 1, 3], [4, 5, 3]],
   '6-grid': [[1, 2, 3], [4, 5, 6]],
   '6-horizontal': [[1, 2, 3, 4, 5, 6]],
   '6-featured-top': [[1, 1, 2, 2], [3, 4, 5, 6]],
   '6-featured-bottom': [[1, 2, 3, 4], [5, 5, 6, 6]],
+  '6-magazine': [[1, 1, 2, 3], [1, 1, 4, 5], [1, 1, 6, 6]],
+  '6-mosaic': [[1, 2, 2, 3], [4, 4, 5, 6]],
+  '6-tall-left': [[1, 2, 3], [1, 4, 5], [1, 6, 6]],
+  '6-tall-right': [[1, 2, 3], [4, 5, 3], [6, 6, 3]],
+  '7-gallery': [[1, 1, 2, 2, 3], [4, 5, 5, 6, 7]],
   '8-grid': [[1, 2, 3, 4], [5, 6, 7, 8]],
+  '8-featured': [[1, 1, 2, 3, 4], [1, 1, 5, 6, 7], [1, 1, 8, 8, 8]],
   '9-grid': [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+  '10-mosaic': [[1, 1, 2, 3, 3], [1, 1, 4, 5, 5], [6, 7, 8, 9, 10]],
+  'filmstrip': [[1, 2, 3, 4, 5]],
+  'polaroid-3': [[1, 1, 2, 2, 3, 3]],
+  't-shape': [[1, 1, 1], [2, 3, 4]],
+  'inverted-t': [[1, 2, 3], [4, 4, 4]],
+  'staircase': [[1, 2, 2], [1, 3, 3], [4, 4, 4]],
+  'diagonal': [[1, 1, 2, 3], [4, 5, 5, 3], [4, 6, 6, 6]],
 };
 
 function exportImageCollage(section) {
@@ -427,26 +535,25 @@ function exportImageCollage(section) {
   const focalPoints = section.focalPoints || [];
   const imageBackgrounds = section.imageBackgrounds || [];
   const imageOverlays = section.imageOverlays || [];
-  const layout = section.layout || '4-horizontal';
+  const layout = section.layout || '4-grid';
   
-  // Get the preset or default to single row
-  const preset = COLLAGE_PRESETS[layout] || [[...Array(images.length).keys()].map(i => i + 1)];
+  // Get the preset
+  const preset = COLLAGE_PRESETS[layout] || COLLAGE_PRESETS['4-grid'];
   const rows = preset.length;
   const cols = preset[0]?.length || 1;
   
-  // Calculate dimensions - use 80% of 600px to match the wrapper
-  const totalWidth = 480; // 80% of 600px
-  const cellWidth = Math.floor((totalWidth - (gap * (cols - 1))) / cols);
-  const rowHeight = Math.floor(imageHeight / rows);
+  // Available width inside the email container (600px - 32px padding = 568px)
+  const totalWidth = 568;
+  const rowHeightUnit = Math.floor(imageHeight / rows);
   
-  // Process cells to get unique cells with their spans
-  const processedCells = [];
-  const rendered = new Set();
+  // Build a map of cells with their spans
+  const cellMap = new Map();
+  const processedIds = new Set();
   
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const cellId = preset[r]?.[c];
-      if (!cellId || rendered.has(cellId)) continue;
+      const cellId = preset[r][c];
+      if (processedIds.has(cellId)) continue;
       
       // Calculate column span
       let colSpan = 1;
@@ -460,67 +567,87 @@ function exportImageCollage(section) {
         rowSpan++;
       }
       
-      rendered.add(cellId);
-      processedCells.push({
-        id: cellId,
-        row: r,
-        col: c,
-        colSpan,
-        rowSpan,
-        imageIndex: cellId - 1
-      });
+      processedIds.add(cellId);
+      cellMap.set(cellId, { row: r, col: c, colSpan, rowSpan, imageIndex: cellId - 1 });
     }
   }
   
-  // Build table rows
-  let tableRows = '';
+  // Build HTML rows
+  let tableRowsHtml = '';
+  const renderedInRow = new Set();
+  
   for (let r = 0; r < rows; r++) {
-    const rowCells = processedCells.filter(cell => cell.row === r);
-    if (rowCells.length === 0) continue;
-    
     let rowHtml = '<tr>';
-    for (const cell of rowCells) {
-      const image = images[cell.imageIndex];
-      const focalPoint = focalPoints[cell.imageIndex] || { x: 50, y: 50 };
-      const bgColor = imageBackgrounds[cell.imageIndex] || '';
-      const overlay = imageOverlays[cell.imageIndex] || { color: '', opacity: 0 };
+    const renderedInThisRow = new Set();
+    
+    for (let c = 0; c < cols; c++) {
+      const cellId = preset[r][c];
       
-      const cellWidthTotal = (cellWidth * cell.colSpan) + (gap * (cell.colSpan - 1));
-      const cellHeightTotal = (rowHeight * cell.rowSpan) + (gap * (cell.rowSpan - 1));
+      // Skip if this cell was already rendered (part of a multi-row span from above)
+      const cellInfo = cellMap.get(cellId);
+      if (!cellInfo || cellInfo.row !== r || renderedInThisRow.has(cellId)) continue;
       
-      let cellContent = '';
+      // Check if this cell starts on a previous row (rowspan from above)
+      if (cellInfo.row < r) continue;
+      
+      renderedInThisRow.add(cellId);
+      
+      const { colSpan, rowSpan, imageIndex } = cellInfo;
+      const image = images[imageIndex];
+      const focalPoint = focalPoints[imageIndex] || { x: 50, y: 50 };
+      const bgColor = imageBackgrounds[imageIndex] || '';
+      const overlay = imageOverlays[imageIndex] || { color: '', opacity: 0 };
+      
+      // Calculate cell dimensions
+      const cellWidthPct = (colSpan / cols) * 100;
+      const cellHeightPx = (rowHeightUnit * rowSpan) + (gap * (rowSpan - 1));
+      const cellWidthPx = Math.floor((totalWidth / cols) * colSpan) - (colSpan > 1 ? 0 : 0);
+      
+      // Build cell content
+      let cellContent;
       if (image) {
         const objectFit = bgColor ? 'contain' : 'cover';
+        const overlayDiv = overlay.color && overlay.opacity > 0 
+          ? `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` 
+          : '';
+        
         cellContent = `
-          <div style="width: ${cellWidthTotal}px; height: ${cellHeightTotal}px; background-color: ${bgColor || '#f4f4f5'}; border-radius: 8px; overflow: hidden; position: relative;">
-            <img src="${image}" alt="Image ${cell.id}" style="width: 100%; height: 100%; display: block; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
-            ${overlay.color && overlay.opacity > 0 ? `<div style="position: absolute; inset: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` : ''}
+          <div style="position: relative; width: 100%; height: ${cellHeightPx}px; border-radius: 8px; overflow: hidden; background-color: ${bgColor || '#f4f4f5'};">
+            <img src="${image}" alt="Image ${cellId}" width="${cellWidthPx}" height="${cellHeightPx}" style="display: block; width: 100%; height: ${cellHeightPx}px; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
+            ${overlayDiv}
           </div>`;
       } else {
-        cellContent = `<div style="width: ${cellWidthTotal}px; height: ${cellHeightTotal}px; background-color: #f4f4f5; border-radius: 8px;"></div>`;
+        cellContent = `
+          <div style="width: 100%; height: ${cellHeightPx}px; background-color: #f4f4f5; border-radius: 8px; display: table;">
+            <div style="display: table-cell; vertical-align: middle; text-align: center; color: #a1a1aa; font-size: 14px;">
+              ${cellId}
+            </div>
+          </div>`;
       }
       
-      const isLastCol = cell.col + cell.colSpan >= cols;
-      const isLastRow = r + cell.rowSpan >= rows;
-      const paddingRight = isLastCol ? 0 : gap;
+      // Is this the last column or last row?
+      const isLastColInRow = (c + colSpan >= cols);
+      const isLastRow = (r + rowSpan >= rows);
+      const paddingRight = isLastColInRow ? 0 : gap;
       const paddingBottom = isLastRow ? 0 : gap;
       
       rowHtml += `
-        <td ${cell.colSpan > 1 ? `colspan="${cell.colSpan}"` : ''} ${cell.rowSpan > 1 ? `rowspan="${cell.rowSpan}"` : ''} style="padding: 0 ${paddingRight}px ${paddingBottom}px 0; vertical-align: top;">
+        <td${colSpan > 1 ? ` colspan="${colSpan}"` : ''}${rowSpan > 1 ? ` rowspan="${rowSpan}"` : ''} width="${cellWidthPct}%" valign="top" style="padding: 0 ${paddingRight}px ${paddingBottom}px 0; vertical-align: top;">
           ${cellContent}
         </td>`;
     }
+    
     rowHtml += '</tr>';
-    tableRows += rowHtml;
+    tableRowsHtml += rowHtml;
   }
 
-  if (!tableRows) return '';
+  if (!tableRowsHtml) return '';
 
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 16px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-          ${tableRows}
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+          ${tableRowsHtml}
         </table>
       </td>
     </tr>`;
@@ -532,7 +659,7 @@ function exportProfileCards(section) {
 
   const columns = section.columns || 4;
   const borderRadius = section.imageShape === 'circular' ? '50%' : '8px';
-  const cellWidth = Math.floor(100 / columns);
+  const cellWidthPct = Math.floor(100 / columns);
   const fontStack = FONT_STACKS['Poppins'];
 
   let profileCells = '';
@@ -540,8 +667,11 @@ function exportProfileCards(section) {
     if (!profile) return;
     
     profileCells += `
-      <td width="${cellWidth}%" style="text-align: center; vertical-align: top; padding: 10px;">
-        ${profile.image ? `<img src="${profile.image}" alt="${profile.name || ''}" style="width: 80px; height: 80px; display: block; margin: 0 auto 10px; border-radius: ${borderRadius}; object-fit: cover;" />` : ''}
+      <td width="${cellWidthPct}%" valign="top" style="text-align: center; vertical-align: top; padding: 10px;">
+        ${profile.image ? `<img src="${profile.image}" alt="${profile.name || ''}" width="80" height="80" style="width: 80px; height: 80px; display: block; margin: 0 auto 10px; border-radius: ${borderRadius}; object-fit: cover;" />` : 
+        `<div style="width: 80px; height: 80px; margin: 0 auto 10px; border-radius: ${borderRadius}; background-color: #E0E0E0; display: table;">
+          <div style="display: table-cell; vertical-align: middle; text-align: center; color: #999; font-size: 32px;">👤</div>
+        </div>`}
         ${section.showName !== false && profile.name ? `<div style="font-family: ${fontStack}; font-size: 14px; font-weight: 600; color: #333333; margin: 8px 0 4px;">${profile.name}</div>` : ''}
         ${section.showTitle !== false && profile.title ? `<div style="font-family: ${fontStack}; font-size: 12px; color: #666666;">${profile.title}</div>` : ''}
       </td>`;
@@ -552,7 +682,7 @@ function exportProfileCards(section) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 30px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
           <tr>
             ${profileCells}
           </tr>
@@ -569,16 +699,16 @@ function exportRecipe(section) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 30px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
           <tr>
-            <td style="text-align: center;">
+            <td align="center">
               <h2 dir="rtl" style="font-family: ${fontStack}; font-size: 24px; font-weight: 600; color: #333333; margin: 0 0 20px;">${section.title || ''}</h2>
             </td>
           </tr>
           ${section.image ? `
           <tr>
             <td style="padding-bottom: 20px;">
-              <img src="${section.image}" alt="${section.title || ''}" style="width: 100%; height: auto; display: block; border-radius: 8px;" />
+              <img src="${section.image}" alt="${section.title || ''}" width="560" style="width: 100%; max-width: 560px; height: auto; display: block; border-radius: 8px;" />
             </td>
           </tr>` : ''}
           <tr>
@@ -615,32 +745,34 @@ function exportFooter(section) {
     content += `
       <tr>
         <td align="${textAlign}" style="padding-bottom: 20px;">
-          <img src="${section.logo}" alt="Logo" style="width: ${logoWidth}px; height: ${logoHeight}px; display: inline-block; object-fit: contain;" />
+          <img src="${section.logo}" alt="Logo" width="${logoWidth}" style="width: ${logoWidth}px; height: ${logoHeight}px; display: inline-block; object-fit: contain;" />
         </td>
       </tr>`;
   }
   
-  // Social icons
+  // Social icons - use image-based icons for email compatibility
   if (section.showSocial !== false && section.socialLinks) {
     const socialLinks = section.socialLinks;
     const iconSize = section.socialIconSize || 24;
-    const iconColor = section.socialIconColor || '#4B5563';
-    
-    // Social icon SVG paths
-    const socialIcons = {
-      facebook: `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="${iconColor}"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>`,
-      x: `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="${iconColor}"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
-      linkedin: `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="${iconColor}"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`,
-      instagram: `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="${iconColor}"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>`,
-      rss: `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="${iconColor}"><path d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>`,
-      youtube: `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="${iconColor}"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
-      tiktok: `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="${iconColor}"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>`
-    };
     
     let iconsHtml = '';
-    Object.entries(socialLinks).forEach(([platform, url]) => {
-      if (url && socialIcons[platform]) {
-        iconsHtml += `<a href="${url}" target="_blank" style="text-decoration: none; margin: 0 ${section.socialGap || 8}px;">${socialIcons[platform]}</a>`;
+    const platforms = ['facebook', 'x', 'twitter', 'linkedin', 'instagram', 'youtube', 'tiktok'];
+    
+    platforms.forEach(platform => {
+      const url = socialLinks[platform];
+      if (url) {
+        // Use simple text-based icons for email compatibility
+        const iconMap = {
+          facebook: 'f',
+          x: '𝕏',
+          twitter: '𝕏',
+          linkedin: 'in',
+          instagram: '📷',
+          youtube: '▶',
+          tiktok: '♪'
+        };
+        iconsHtml += `
+          <a href="${url}" target="_blank" style="display: inline-block; width: ${iconSize}px; height: ${iconSize}px; line-height: ${iconSize}px; text-align: center; text-decoration: none; color: ${section.socialIconColor || '#4B5563'}; font-size: ${Math.floor(iconSize * 0.6)}px; font-weight: bold; margin: 0 ${section.socialGap || 8}px; border-radius: 50%; background-color: #f0f0f0;">${iconMap[platform]}</a>`;
       }
     });
     
@@ -659,7 +791,11 @@ function exportFooter(section) {
     content += `
       <tr>
         <td style="padding: 0 0 20px;">
-          <hr style="border: none; border-top: ${section.dividerWidth || 1}px solid ${section.dividerColor || '#E5E7EB'}; margin: 0;" />
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+            <tr>
+              <td style="border-top: ${section.dividerWidth || 1}px solid ${section.dividerColor || '#E5E7EB'};"></td>
+            </tr>
+          </table>
         </td>
       </tr>`;
   }
@@ -684,7 +820,7 @@ function exportFooter(section) {
     
     content += `
       <tr>
-        <td align="${textAlign}" style="padding-bottom: 0; font-family: ${fontStack};">
+        <td align="${textAlign}" style="font-family: ${fontStack};">
           ${linksHtml}
         </td>
       </tr>`;
@@ -704,7 +840,7 @@ function exportFooter(section) {
   return `
     <tr>
       <td style="background-color: ${bgColor}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
           ${content}
         </table>
       </td>
