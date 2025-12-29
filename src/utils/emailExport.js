@@ -186,7 +186,7 @@ export function exportForGmail(newsletter) {
     let content;
     switch (section.type) {
       case 'header':
-        content = exportHeader(section);
+        content = exportHeader(section, true); // true = isGmail
         break;
       case 'marquee':
         content = exportMarquee(section);
@@ -201,16 +201,16 @@ export function exportForGmail(newsletter) {
         content = exportAccentText(section);
         break;
       case 'promoCard':
-        content = exportPromoCard(section);
+        content = exportPromoCard(section, true); // true = isGmail
         break;
       case 'imageCollage':
-        content = exportImageCollage(section);
+        content = exportImageCollage(section, true); // true = isGmail
         break;
       case 'profileCards':
         content = exportProfileCards(section);
         break;
       case 'recipe':
-        content = exportRecipe(section);
+        content = exportRecipe(section, true); // true = isGmail
         break;
       case 'footer':
         content = exportFooter(section);
@@ -221,14 +221,13 @@ export function exportForGmail(newsletter) {
     return section.container ? wrapWithContainer(content, section.container) : content;
   }).join('\n');
 
-  // For Gmail, use 80% width centered with max-width
-  return `<style>@import url('${GOOGLE_FONTS_URL}');</style>
-<table role="presentation" align="center" width="80%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px; width: 80%; margin: 0 auto; font-family: ${FONT_STACKS['default']}; mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+  // For Gmail - NO grey background, just clean white table that fits the compose window
+  return `<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; width: 100%; max-width: 600px; margin: 0 auto; font-family: ${FONT_STACKS['default']};">
   ${sections}
 </table>`;
 }
 
-function exportHeader(section) {
+function exportHeader(section, isGmail = false) {
   const bgStyle = section.gradientEnd 
     ? `background: linear-gradient(180deg, ${section.backgroundColor || '#4A90D9'} 0%, ${section.gradientEnd} 100%); background-color: ${section.backgroundColor || '#4A90D9'};`
     : `background-color: ${section.backgroundColor || '#4A90D9'};`;
@@ -262,14 +261,19 @@ function exportHeader(section) {
       </td>
     </tr>` : '';
 
-  // Hero image
+  // Hero image - use 100% width for Gmail auto-fit
   const heroImageHeight = section.heroImageHeight || 200;
   const heroImageHtml = section.heroImage ? `
     <tr>
       <td align="center" style="padding: 0 20px 24px;">
-        <img src="${section.heroImage}" alt="Hero" width="560" style="width: 100%; max-width: 560px; height: ${heroImageHeight}px; display: block; object-fit: cover; border-radius: 8px;" />
+        <img src="${section.heroImage}" alt="Hero" style="width: 100%; max-width: 560px; height: auto; display: block; border-radius: 8px;" />
       </td>
     </tr>` : '';
+
+  // Logo - use percentage-based max-width for Gmail
+  const logoStyle = isGmail 
+    ? `max-width: ${logoWidth}px; height: auto; display: block; object-fit: contain;`
+    : `width: ${logoWidth}px; height: ${logoHeight}; display: block; object-fit: contain;`;
 
   return `
     <tr>
@@ -278,7 +282,7 @@ function exportHeader(section) {
           ${section.logo ? `
           <tr>
             <td align="${logoAlignment}" style="padding: 40px 20px 20px;">
-              <img src="${section.logo}" alt="Logo" width="${logoWidth}" style="width: ${logoWidth}px; height: ${logoHeight}; display: block; object-fit: contain;" />
+              <img src="${section.logo}" alt="Logo" style="${logoStyle}" />
             </td>
           </tr>` : ''}
           ${heroImageHtml}
@@ -408,7 +412,7 @@ function exportAccentText(section) {
     </tr>`;
 }
 
-function exportPromoCard(section) {
+function exportPromoCard(section, isGmail = false) {
   const fontFamily = section.fontFamily || 'Noto Sans Hebrew';
   const fontStack = getFontStack(fontFamily);
   const direction = section.direction || 'rtl';
@@ -424,17 +428,17 @@ function exportPromoCard(section) {
   
   const body = (section.body || '').replace(/\n\n/g, '</p><p style="margin: 0.8em 0 0;">').replace(/\n/g, '<br>');
   
-  // Image and content widths
+  // Image width - use percentage for Gmail
   const imageWidth = section.imageWidth || 200;
-  const contentWidth = 560 - imageWidth - gap; // 560 = 600 - 40px padding
+  const imageWidthPct = Math.round((imageWidth / 560) * 100);
   
   // Determine layout based on direction and image position
   const imagePosition = section.imagePosition || 'right';
   const isImageFirst = (direction === 'rtl' && imagePosition === 'right') || (direction === 'ltr' && imagePosition === 'left');
   
   const imageCell = section.image ? `
-    <td width="${imageWidth}" valign="${section.verticalAlign || 'middle'}" style="vertical-align: ${section.verticalAlign || 'middle'};">
-      <img src="${section.image}" alt="Promo" width="${imageWidth}" style="width: ${imageWidth}px; height: ${section.imageHeight || 160}px; display: block; object-fit: cover; border-radius: ${section.imageBorderRadius || 12}px;" />
+    <td width="${imageWidthPct}%" valign="${section.verticalAlign || 'middle'}" style="vertical-align: ${section.verticalAlign || 'middle'};">
+      <img src="${section.image}" alt="Promo" style="width: 100%; max-width: ${imageWidth}px; height: auto; display: block; object-fit: cover; border-radius: ${section.imageBorderRadius || 12}px;" />
     </td>` : '';
   
   const gapCell = section.image ? `<td width="${gap}" style="width: ${gap}px;"></td>` : '';
@@ -526,7 +530,7 @@ const COLLAGE_PRESETS = {
   'diagonal': [[1, 1, 2, 3], [4, 5, 5, 3], [4, 6, 6, 6]],
 };
 
-function exportImageCollage(section) {
+function exportImageCollage(section, isGmail = false) {
   const images = section.images || [];
   if (images.length === 0) return '';
 
@@ -542,8 +546,7 @@ function exportImageCollage(section) {
   const rows = preset.length;
   const cols = preset[0]?.length || 1;
   
-  // Available width inside the email container (600px - 32px padding = 568px)
-  const totalWidth = 568;
+  // Row height for aspect ratio
   const rowHeightUnit = Math.floor(imageHeight / rows);
   
   // Build a map of cells with their spans
@@ -574,7 +577,6 @@ function exportImageCollage(section) {
   
   // Build HTML rows
   let tableRowsHtml = '';
-  const renderedInRow = new Set();
   
   for (let r = 0; r < rows; r++) {
     let rowHtml = '<tr>';
@@ -598,12 +600,11 @@ function exportImageCollage(section) {
       const bgColor = imageBackgrounds[imageIndex] || '';
       const overlay = imageOverlays[imageIndex] || { color: '', opacity: 0 };
       
-      // Calculate cell dimensions
-      const cellWidthPct = (colSpan / cols) * 100;
+      // Calculate cell dimensions - use percentages
+      const cellWidthPct = Math.round((colSpan / cols) * 100);
       const cellHeightPx = (rowHeightUnit * rowSpan) + (gap * (rowSpan - 1));
-      const cellWidthPx = Math.floor((totalWidth / cols) * colSpan) - (colSpan > 1 ? 0 : 0);
       
-      // Build cell content
+      // Build cell content - use 100% width images
       let cellContent;
       if (image) {
         const objectFit = bgColor ? 'contain' : 'cover';
@@ -611,9 +612,10 @@ function exportImageCollage(section) {
           ? `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` 
           : '';
         
+        // Use width: 100% for auto-fit in Gmail
         cellContent = `
-          <div style="position: relative; width: 100%; height: ${cellHeightPx}px; border-radius: 8px; overflow: hidden; background-color: ${bgColor || '#f4f4f5'};">
-            <img src="${image}" alt="Image ${cellId}" width="${cellWidthPx}" height="${cellHeightPx}" style="display: block; width: 100%; height: ${cellHeightPx}px; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
+          <div style="position: relative; width: 100%; height: ${cellHeightPx}px; border-radius: 8px; overflow: hidden; background-color: ${bgColor || 'transparent'};">
+            <img src="${image}" alt="Image ${cellId}" style="display: block; width: 100%; height: ${cellHeightPx}px; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
             ${overlayDiv}
           </div>`;
       } else {
@@ -691,7 +693,7 @@ function exportProfileCards(section) {
     </tr>`;
 }
 
-function exportRecipe(section) {
+function exportRecipe(section, isGmail = false) {
   const ingredients = (section.ingredients || '').replace(/\n/g, '<br>');
   const instructions = (section.instructions || '').replace(/\n/g, '<br>');
   const fontStack = FONT_STACKS['Noto Sans Hebrew'];
@@ -708,7 +710,7 @@ function exportRecipe(section) {
           ${section.image ? `
           <tr>
             <td style="padding-bottom: 20px;">
-              <img src="${section.image}" alt="${section.title || ''}" width="560" style="width: 100%; max-width: 560px; height: auto; display: block; border-radius: 8px;" />
+              <img src="${section.image}" alt="${section.title || ''}" style="width: 100%; height: auto; display: block; border-radius: 8px;" />
             </td>
           </tr>` : ''}
           <tr>
@@ -738,14 +740,14 @@ function exportFooter(section) {
   
   let content = '';
   
-  // Logo
+  // Logo - use responsive width
   if (section.logo) {
     const logoWidth = section.logoWidth || 120;
     const logoHeight = section.logoHeight || 40;
     content += `
       <tr>
         <td align="${textAlign}" style="padding-bottom: 20px;">
-          <img src="${section.logo}" alt="Logo" width="${logoWidth}" style="width: ${logoWidth}px; height: ${logoHeight}px; display: inline-block; object-fit: contain;" />
+          <img src="${section.logo}" alt="Logo" style="max-width: ${logoWidth}px; height: auto; display: inline-block; object-fit: contain;" />
         </td>
       </tr>`;
   }
