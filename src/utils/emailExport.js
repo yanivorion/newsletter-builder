@@ -149,12 +149,11 @@ export function exportForGmail(newsletter) {
     }
   }).join('\n');
 
-  // For Gmail paste, include Google Fonts in a style block at the top
-  // Gmail may strip this, but it works in many cases
+  // For Gmail paste, use 80% width with max-width to prevent overflow
   return `<style>
 @import url('${GOOGLE_FONTS_URL}');
 </style>
-<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px; margin: 0 auto; font-family: ${FONT_STACKS['default']};">
+<table role="presentation" width="80%" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; max-width: 600px; width: 80%; margin: 0 auto; font-family: ${FONT_STACKS['default']};">
   ${sections}
 </table>`;
 }
@@ -283,30 +282,30 @@ function exportAccentText(section) {
   const paddingBottom = section.paddingBottom ?? padding;
   const paddingLeft = section.paddingLeft ?? padding;
   const paddingRight = section.paddingRight ?? padding;
+  const tagToContentGap = section.tagToContentGap ?? 60;
   
   const content = (section.content || '').replace(/\n\n/g, '</p><p style="margin: 0 0 1em;">').replace(/\n/g, '<br>');
   
-  // Tag badge
+  // Tag badge - positioned correctly with proper alignment
+  const tagAlign = section.tagPosition === 'top-left' ? 'left' : 'right';
   const tagHtml = section.tagText ? `
-    <div style="display: inline-block; background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 8px 20px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack}; margin-bottom: 24px;">
-      ${section.tagText}
-    </div>` : '';
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+      <tr>
+        <td align="${tagAlign}" style="padding-bottom: ${tagToContentGap}px;">
+          <div style="display: inline-block; background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 8px 20px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack};">
+            ${section.tagText}
+          </div>
+        </td>
+      </tr>
+    </table>` : '';
   
   return `
     <tr>
       <td dir="${direction}" style="background-color: ${section.backgroundColor || '#FFFFFF'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; font-family: ${fontStack};">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-          <tr>
-            <td align="${section.tagPosition === 'top-left' ? 'left' : 'right'}">
-              ${tagHtml}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-size: ${section.contentFontSize || 18}px; line-height: ${section.contentLineHeight || 1.8}; color: ${section.contentColor || '#333333'}; text-align: ${textAlign};">
-              <p style="margin: 0;">${content}</p>
-            </td>
-          </tr>
-        </table>
+        ${tagHtml}
+        <div style="font-size: ${section.contentFontSize || 18}px; line-height: ${section.contentLineHeight || 1.8}; color: ${section.contentColor || '#333333'}; text-align: ${textAlign};">
+          <p style="margin: 0;">${content}</p>
+        </div>
       </td>
     </tr>`;
 }
@@ -321,6 +320,8 @@ function exportPromoCard(section) {
   const paddingBottom = section.paddingBottom ?? padding;
   const paddingLeft = section.paddingLeft ?? padding;
   const paddingRight = section.paddingRight ?? padding;
+  const titleToBodyGap = section.titleToBodyGap ?? 16;
+  const bodyToCtaGap = section.bodyToCtaGap ?? 20;
   
   const body = (section.body || '').replace(/\n\n/g, '</p><p style="margin: 0.8em 0 0;">').replace(/\n/g, '<br>');
   
@@ -335,10 +336,10 @@ function exportPromoCard(section) {
   
   const contentHtml = `
     <td style="vertical-align: ${section.verticalAlign || 'center'}; text-align: ${textAlign}; padding: ${isImageFirst ? '0 0 0 ' + (section.gap || 24) + 'px' : '0 ' + (section.gap || 24) + 'px 0 0'};">
-      <h3 style="margin: 0 0 16px; font-family: ${fontStack}; font-size: ${section.titleFontSize || 28}px; font-weight: ${section.titleFontWeight || 700}; color: ${section.titleColor || '#1A1A1A'}; line-height: 1.3;">
+      <h3 style="margin: 0 0 ${titleToBodyGap}px; font-family: ${fontStack}; font-size: ${section.titleFontSize || 28}px; font-weight: ${section.titleFontWeight || 700}; color: ${section.titleColor || '#1A1A1A'}; line-height: 1.3;">
         ${section.title || 'Card Title'}
       </h3>
-      <div style="font-family: ${fontStack}; font-size: ${section.bodyFontSize || 16}px; line-height: ${section.bodyLineHeight || 1.7}; color: ${section.bodyColor || '#555555'}; margin-bottom: ${section.showCta !== false ? '20px' : '0'};">
+      <div style="font-family: ${fontStack}; font-size: ${section.bodyFontSize || 16}px; line-height: ${section.bodyLineHeight || 1.7}; color: ${section.bodyColor || '#555555'}; margin-bottom: ${section.showCta !== false ? bodyToCtaGap + 'px' : '0'};">
         <p style="margin: 0;">${body}</p>
       </div>
       ${section.showCta !== false && section.ctaText ? `
@@ -359,71 +360,150 @@ function exportPromoCard(section) {
     </tr>`;
 }
 
+// Collage layout presets - mirroring the main app's presets
+const COLLAGE_PRESETS = {
+  'single': [[1]],
+  'single-wide': [[1, 1]],
+  '2-horizontal': [[1, 2]],
+  '2-vertical': [[1], [2]],
+  '2-left-large': [[1, 1, 2], [1, 1, 2]],
+  '2-right-large': [[1, 2, 2], [1, 2, 2]],
+  '2-top-large': [[1, 1], [1, 1], [2, 2]],
+  '2-bottom-large': [[1, 1], [2, 2], [2, 2]],
+  '3-horizontal': [[1, 2, 3]],
+  '3-vertical': [[1], [2], [3]],
+  '3-left-featured': [[1, 1, 2], [1, 1, 3]],
+  '3-right-featured': [[1, 2, 2], [3, 2, 2]],
+  '3-top-featured': [[1, 1], [2, 3]],
+  '3-bottom-featured': [[1, 2], [3, 3]],
+  '3-center-featured': [[1, 2, 2, 3], [1, 2, 2, 3]],
+  '3-l-shape': [[1, 1, 2], [3, 3, 3]],
+  '3-reverse-l': [[1, 2, 2], [3, 3, 3]],
+  '4-grid': [[1, 2], [3, 4]],
+  '4-horizontal': [[1, 2, 3, 4]],
+  '4-left-featured': [[1, 1, 2], [1, 1, 3], [1, 1, 4]],
+  '4-right-featured': [[1, 2, 2], [3, 2, 2], [4, 2, 2]],
+  '4-top-featured': [[1, 1, 1], [2, 3, 4]],
+  '4-bottom-featured': [[1, 2, 3], [4, 4, 4]],
+  '4-mosaic-1': [[1, 1, 2], [3, 4, 4]],
+  '4-mosaic-2': [[1, 2, 2], [3, 3, 4]],
+  '4-center-split': [[1, 1, 2, 2], [3, 3, 4, 4]],
+  '4-corners': [[1, 1, 2, 2], [1, 1, 2, 2], [3, 3, 4, 4], [3, 3, 4, 4]],
+  '5-top-row': [[1, 2, 3], [4, 4, 5]],
+  '5-bottom-row': [[1, 1, 2], [3, 4, 5]],
+  '5-featured-left': [[1, 1, 2, 3], [1, 1, 4, 5]],
+  '5-featured-right': [[1, 2, 3, 3], [4, 5, 3, 3]],
+  '6-grid': [[1, 2, 3], [4, 5, 6]],
+  '6-horizontal': [[1, 2, 3, 4, 5, 6]],
+  '6-featured-top': [[1, 1, 2, 2], [3, 4, 5, 6]],
+  '6-featured-bottom': [[1, 2, 3, 4], [5, 5, 6, 6]],
+  '8-grid': [[1, 2, 3, 4], [5, 6, 7, 8]],
+  '9-grid': [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+};
+
 function exportImageCollage(section) {
   const images = section.images || [];
   if (images.length === 0) return '';
 
-  const gap = section.gap || 10;
+  const gap = section.gap || 8;
   const imageHeight = section.imageHeight || 200;
   const focalPoints = section.focalPoints || [];
   const imageBackgrounds = section.imageBackgrounds || [];
   const imageOverlays = section.imageOverlays || [];
+  const layout = section.layout || '4-horizontal';
   
-  let columnsCount = 4;
-  if (section.layout === '2-column') columnsCount = 2;
-  else if (section.layout === '3-column') columnsCount = 3;
-  else if (section.layout === '4-column') columnsCount = 4;
-
-  const imageWidth = Math.floor((600 - 40 - (gap * (columnsCount - 1))) / columnsCount);
-
-  let imageCells = '';
-  for (let i = 0; i < images.length; i++) {
-    if (!images[i]) continue;
-    
-    const isLastInRow = (i + 1) % columnsCount === 0;
-    const focalPoint = focalPoints[i] || { x: 50, y: 50 };
-    const bgColor = imageBackgrounds[i] || '';
-    const overlay = imageOverlays[i] || { color: '', opacity: 0 };
-    
-    let cellContent = '';
-    
-    if (bgColor) {
-      cellContent = `
-        <div style="width: ${imageWidth}px; height: ${imageHeight}px; background-color: ${bgColor}; border-radius: 4px; position: relative; overflow: hidden;">
-          <img src="${images[i]}" alt="Image ${i + 1}" style="width: 100%; height: 100%; display: block; object-fit: contain; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
-          ${overlay.color && overlay.opacity > 0 ? `<div style="position: absolute; inset: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` : ''}
-        </div>`;
-    } else if (overlay.color && overlay.opacity > 0) {
-      cellContent = `
-        <div style="width: ${imageWidth}px; height: ${imageHeight}px; position: relative; overflow: hidden; border-radius: 4px;">
-          <img src="${images[i]}" alt="Image ${i + 1}" style="width: 100%; height: 100%; display: block; object-fit: cover; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
-          <div style="position: absolute; inset: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>
-        </div>`;
-    } else {
-      cellContent = `<img src="${images[i]}" alt="Image ${i + 1}" style="width: ${imageWidth}px; height: ${imageHeight}px; display: block; object-fit: cover; object-position: ${focalPoint.x}% ${focalPoint.y}%; border-radius: 4px;" />`;
-    }
-    
-    imageCells += `
-      <td style="padding: 0 ${isLastInRow ? 0 : gap}px ${gap}px 0; vertical-align: top;">
-        ${cellContent}
-      </td>`;
-    
-    if (isLastInRow && i < images.length - 1) {
-      imageCells += `
-    </tr>
-    <tr>`;
+  // Get the preset or default to single row
+  const preset = COLLAGE_PRESETS[layout] || [[...Array(images.length).keys()].map(i => i + 1)];
+  const rows = preset.length;
+  const cols = preset[0]?.length || 1;
+  
+  // Calculate dimensions - use 80% of 600px to match the wrapper
+  const totalWidth = 480; // 80% of 600px
+  const cellWidth = Math.floor((totalWidth - (gap * (cols - 1))) / cols);
+  const rowHeight = Math.floor(imageHeight / rows);
+  
+  // Process cells to get unique cells with their spans
+  const processedCells = [];
+  const rendered = new Set();
+  
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cellId = preset[r]?.[c];
+      if (!cellId || rendered.has(cellId)) continue;
+      
+      // Calculate column span
+      let colSpan = 1;
+      while (c + colSpan < cols && preset[r][c + colSpan] === cellId) {
+        colSpan++;
+      }
+      
+      // Calculate row span
+      let rowSpan = 1;
+      while (r + rowSpan < rows && preset[r + rowSpan]?.[c] === cellId) {
+        rowSpan++;
+      }
+      
+      rendered.add(cellId);
+      processedCells.push({
+        id: cellId,
+        row: r,
+        col: c,
+        colSpan,
+        rowSpan,
+        imageIndex: cellId - 1
+      });
     }
   }
+  
+  // Build table rows
+  let tableRows = '';
+  for (let r = 0; r < rows; r++) {
+    const rowCells = processedCells.filter(cell => cell.row === r);
+    if (rowCells.length === 0) continue;
+    
+    let rowHtml = '<tr>';
+    for (const cell of rowCells) {
+      const image = images[cell.imageIndex];
+      const focalPoint = focalPoints[cell.imageIndex] || { x: 50, y: 50 };
+      const bgColor = imageBackgrounds[cell.imageIndex] || '';
+      const overlay = imageOverlays[cell.imageIndex] || { color: '', opacity: 0 };
+      
+      const cellWidthTotal = (cellWidth * cell.colSpan) + (gap * (cell.colSpan - 1));
+      const cellHeightTotal = (rowHeight * cell.rowSpan) + (gap * (cell.rowSpan - 1));
+      
+      let cellContent = '';
+      if (image) {
+        const objectFit = bgColor ? 'contain' : 'cover';
+        cellContent = `
+          <div style="width: ${cellWidthTotal}px; height: ${cellHeightTotal}px; background-color: ${bgColor || '#f4f4f5'}; border-radius: 8px; overflow: hidden; position: relative;">
+            <img src="${image}" alt="Image ${cell.id}" style="width: 100%; height: 100%; display: block; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
+            ${overlay.color && overlay.opacity > 0 ? `<div style="position: absolute; inset: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` : ''}
+          </div>`;
+      } else {
+        cellContent = `<div style="width: ${cellWidthTotal}px; height: ${cellHeightTotal}px; background-color: #f4f4f5; border-radius: 8px;"></div>`;
+      }
+      
+      const isLastCol = cell.col + cell.colSpan >= cols;
+      const isLastRow = r + cell.rowSpan >= rows;
+      const paddingRight = isLastCol ? 0 : gap;
+      const paddingBottom = isLastRow ? 0 : gap;
+      
+      rowHtml += `
+        <td ${cell.colSpan > 1 ? `colspan="${cell.colSpan}"` : ''} ${cell.rowSpan > 1 ? `rowspan="${cell.rowSpan}"` : ''} style="padding: 0 ${paddingRight}px ${paddingBottom}px 0; vertical-align: top;">
+          ${cellContent}
+        </td>`;
+    }
+    rowHtml += '</tr>';
+    tableRows += rowHtml;
+  }
 
-  if (!imageCells) return '';
+  if (!tableRows) return '';
 
   return `
     <tr>
-      <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 20px;">
+      <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 16px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-          <tr>
-            ${imageCells}
-          </tr>
+          ${tableRows}
         </table>
       </td>
     </tr>`;

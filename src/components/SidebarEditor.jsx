@@ -1906,6 +1906,19 @@ function SidebarEditor({
           </div>
         </FieldGroup>
 
+        {/* Spacing */}
+        <FieldGroup label="Spacing">
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Tag to Content Gap</span>
+            <NumberInput
+              value={section.tagToContentGap ?? 60}
+              onChange={(val) => handleFieldChange('tagToContentGap', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+        </FieldGroup>
+
         {/* Section Padding */}
         <FieldGroup label="Section Padding">
           <div className="grid grid-cols-2 gap-2">
@@ -2458,6 +2471,30 @@ function SidebarEditor({
               <option value="center">Center</option>
               <option value="left">Left</option>
             </Select>
+          </div>
+        </div>
+      </FieldGroup>
+
+      {/* Spacing */}
+      <FieldGroup label="Content Spacing">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Title to Body</span>
+            <NumberInput
+              value={section.titleToBodyGap ?? 16}
+              onChange={(val) => handleFieldChange('titleToBodyGap', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Body to CTA</span>
+            <NumberInput
+              value={section.bodyToCtaGap ?? 20}
+              onChange={(val) => handleFieldChange('bodyToCtaGap', val)}
+              step={4}
+              suffix="px"
+            />
           </div>
         </div>
       </FieldGroup>

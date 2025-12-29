@@ -26,6 +26,9 @@ function AccentTextSection({
   contentColor = '#333333',
   contentAlign = 'right', // for RTL
   
+  // Spacing
+  tagToContentGap = 60, // gap between tag and content
+  
   // Container
   backgroundColor = '#FFFFFF',
   padding = 40,
@@ -66,7 +69,7 @@ function AccentTextSection({
     lineHeight: contentLineHeight,
     color: contentColor,
     textAlign: contentAlign,
-    marginTop: '60px', // Space for the tag
+    marginTop: `${tagToContentGap}px`, // Space for the tag
     paddingTop: '20px'
   };
 

@@ -54,7 +54,11 @@ function PromoCardSection({
   
   // Alignment  
   contentAlign = 'right', // for RTL text alignment
-  verticalAlign = 'center' // 'top', 'center', 'bottom'
+  verticalAlign = 'center', // 'top', 'center', 'bottom'
+  
+  // Spacing
+  titleToBodyGap = 16, // gap between title and body
+  bodyToCtaGap = 20 // gap between body and CTA
 }) {
   const containerStyle = {
     backgroundColor,
@@ -83,7 +87,7 @@ function PromoCardSection({
     fontWeight: titleFontWeight,
     color: titleColor,
     margin: 0,
-    marginBottom: '16px',
+    marginBottom: `${titleToBodyGap}px`,
     lineHeight: 1.3
   };
 
@@ -92,7 +96,7 @@ function PromoCardSection({
     lineHeight: bodyLineHeight,
     color: bodyColor,
     margin: 0,
-    marginBottom: showCta ? '20px' : 0
+    marginBottom: showCta ? `${bodyToCtaGap}px` : 0
   };
 
   const ctaStyle = {
