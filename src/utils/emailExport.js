@@ -459,17 +459,21 @@ function exportPromoCard(section, isGmail = false) {
   
   const body = (section.body || '').replace(/\n\n/g, '</p><p style="margin: 0.8em 0 0;">').replace(/\n/g, '<br>');
   
-  // Image width - use percentage for Gmail
+  // Image dimensions - fixed size with object-fit cover
   const imageWidth = section.imageWidth || 200;
-  const imageWidthPct = Math.round((imageWidth / 560) * 100);
+  const imageHeight = section.imageHeight || 160;
+  const imageBorderRadius = section.imageBorderRadius || 12;
   
   // Determine layout based on direction and image position
   const imagePosition = section.imagePosition || 'right';
   const isImageFirst = (direction === 'rtl' && imagePosition === 'right') || (direction === 'ltr' && imagePosition === 'left');
   
+  // Fixed size container with image using object-fit: cover
   const imageCell = section.image ? `
-    <td width="${imageWidthPct}%" valign="${section.verticalAlign || 'middle'}" style="vertical-align: ${section.verticalAlign || 'middle'};">
-      <img src="${section.image}" alt="Promo" style="width: 100%; max-width: ${imageWidth}px; height: auto; display: block; object-fit: cover; border-radius: ${section.imageBorderRadius || 12}px;" />
+    <td width="${imageWidth}" valign="${section.verticalAlign || 'middle'}" style="vertical-align: ${section.verticalAlign || 'middle'}; width: ${imageWidth}px;">
+      <div style="width: ${imageWidth}px; height: ${imageHeight}px; border-radius: ${imageBorderRadius}px; overflow: hidden;">
+        <img src="${section.image}" alt="Promo" style="width: ${imageWidth}px; height: ${imageHeight}px; display: block; object-fit: cover;" />
+      </div>
     </td>` : '';
   
   const gapCell = section.image ? `<td width="${gap}" style="width: ${gap}px;"></td>` : '';
