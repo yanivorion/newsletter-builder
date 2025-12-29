@@ -1370,24 +1370,105 @@ function SidebarEditor({
             size="sm"
             className="w-full"
             onClick={async () => {
-              // Find the collage section element in the preview
-              const collageElement = document.querySelector(`[data-section-id="${selectedSection}"]`);
-              if (!collageElement) {
-                alert('Could not find collage element');
+              const images = section.images || [];
+              if (images.length === 0) {
+                alert('No images to snapshot');
                 return;
               }
               
               try {
-                // Dynamic import html2canvas
-                const html2canvas = (await import('html2canvas')).default;
-                const canvas = await html2canvas(collageElement, {
-                  backgroundColor: section.backgroundColor || '#ffffff',
-                  scale: 2,
-                  useCORS: true,
-                  allowTaint: true
-                });
+                const gap = section.gap || 8;
+                const totalHeight = section.imageHeight || 200;
+                const canvasWidth = 600;
+                const bgColor = section.backgroundColor || '#ffffff';
                 
-                // Download as image
+                // Get preset layout
+                const currentPreset = section.layout || 'featured-left';
+                const presetModule = await import('../lib/collagePresets');
+                const presetData = presetModule.getPresetById(currentPreset);
+                
+                if (!presetData || !presetData.preview) {
+                  alert('Could not find layout preset');
+                  return;
+                }
+                
+                const grid = presetData.preview;
+                const rows = grid.length;
+                const cols = grid[0].length;
+                const cellWidth = (canvasWidth - (gap * (cols - 1))) / cols;
+                const cellHeight = (totalHeight - (gap * (rows - 1))) / rows;
+                
+                // Create canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = canvasWidth;
+                canvas.height = totalHeight;
+                const ctx = canvas.getContext('2d');
+                
+                // Fill background
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvasWidth, totalHeight);
+                
+                // Track which cells we've drawn
+                const drawnCells = new Set();
+                
+                // Load and draw images
+                for (let r = 0; r < rows; r++) {
+                  for (let c = 0; c < cols; c++) {
+                    const cellId = grid[r][c];
+                    if (drawnCells.has(cellId)) continue;
+                    drawnCells.add(cellId);
+                    
+                    const imageIndex = cellId - 1;
+                    const imageSrc = images[imageIndex];
+                    if (!imageSrc) continue;
+                    
+                    // Calculate cell span
+                    let colSpan = 1, rowSpan = 1;
+                    while (c + colSpan < cols && grid[r][c + colSpan] === cellId) colSpan++;
+                    while (r + rowSpan < rows && grid[r + rowSpan]?.[c] === cellId) rowSpan++;
+                    
+                    const x = c * (cellWidth + gap);
+                    const y = r * (cellHeight + gap);
+                    const w = cellWidth * colSpan + gap * (colSpan - 1);
+                    const h = cellHeight * rowSpan + gap * (rowSpan - 1);
+                    
+                    // Load image
+                    const img = new window.Image();
+                    img.crossOrigin = 'anonymous';
+                    await new Promise((resolve, reject) => {
+                      img.onload = resolve;
+                      img.onerror = reject;
+                      img.src = imageSrc;
+                    });
+                    
+                    // Draw with object-fit: cover
+                    const imgRatio = img.width / img.height;
+                    const cellRatio = w / h;
+                    let sx, sy, sw, sh;
+                    
+                    if (imgRatio > cellRatio) {
+                      sh = img.height;
+                      sw = sh * cellRatio;
+                      sx = (img.width - sw) / 2;
+                      sy = 0;
+                    } else {
+                      sw = img.width;
+                      sh = sw / cellRatio;
+                      sx = 0;
+                      sy = (img.height - sh) / 2;
+                    }
+                    
+                    // Round corners with clipping
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.roundRect(x, y, w, h, 8);
+                    ctx.clip();
+                    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+                    ctx.restore();
+                  }
+                }
+                
+                // Download
                 const link = document.createElement('a');
                 link.download = `collage-${Date.now()}.png`;
                 link.href = canvas.toDataURL('image/png');
