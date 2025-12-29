@@ -1039,34 +1039,112 @@ function SidebarEditor({
         />
       </FieldGroup>
 
-      <div className="grid grid-cols-2 gap-3">
-        <FieldGroup label="Background">
-          <input
-            type="color"
-            value={section.backgroundColor || '#04D1FC'}
-            onChange={(e) => handleFieldChange('backgroundColor', e.target.value)}
-            className="w-full h-10 rounded-lg border border-zinc-200 cursor-pointer bg-transparent"
-          />
-        </FieldGroup>
+      <FieldGroup label="Background">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Start Color</span>
+            <input
+              type="color"
+              value={section.backgroundColor || '#04D1FC'}
+              onChange={(e) => handleFieldChange('backgroundColor', e.target.value)}
+              className="w-full h-8 rounded border border-zinc-200 cursor-pointer bg-transparent"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">End Color (Gradient)</span>
+            <div className="flex gap-1">
+              <input
+                type="color"
+                value={section.gradientEnd || section.backgroundColor || '#04D1FC'}
+                onChange={(e) => handleFieldChange('gradientEnd', e.target.value)}
+                className="flex-1 h-8 rounded border border-zinc-200 cursor-pointer bg-transparent"
+              />
+              {section.gradientEnd && (
+                <button
+                  onClick={() => handleFieldChange('gradientEnd', null)}
+                  className="px-2 h-8 text-xs text-zinc-400 hover:text-zinc-600 border border-zinc-200 rounded"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        {section.gradientEnd && (
+          <div className="space-y-1 mt-2">
+            <span className="text-[9px] text-zinc-400">Gradient Direction</span>
+            <Select
+              value={section.gradientDirection || '90deg'}
+              onChange={(e) => handleFieldChange('gradientDirection', e.target.value)}
+              className="h-8"
+            >
+              <option value="90deg">Left → Right</option>
+              <option value="270deg">Right → Left</option>
+              <option value="180deg">Top → Bottom</option>
+              <option value="0deg">Bottom → Top</option>
+              <option value="135deg">Diagonal ↘</option>
+              <option value="45deg">Diagonal ↗</option>
+            </Select>
+          </div>
+        )}
+      </FieldGroup>
 
-        <FieldGroup label="Text Color">
-          <input
-            type="color"
-            value={section.color || '#FFFFFF'}
-            onChange={(e) => handleFieldChange('color', e.target.value)}
-            className="w-full h-10 rounded-lg border border-zinc-200 cursor-pointer bg-transparent"
-          />
-        </FieldGroup>
-      </div>
+      <FieldGroup label="Text Color">
+        <input
+          type="color"
+          value={section.color || '#FFFFFF'}
+          onChange={(e) => handleFieldChange('color', e.target.value)}
+          className="w-full h-8 rounded border border-zinc-200 cursor-pointer bg-transparent"
+        />
+      </FieldGroup>
 
       <FieldGroup label="Font Size">
         <NumberInput
           value={section.fontSize || 18}
           onChange={(val) => handleFieldChange('fontSize', val)}
-          
-          
           suffix="px"
         />
+      </FieldGroup>
+
+      <FieldGroup label="Section Padding">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Top</span>
+            <NumberInput
+              value={section.paddingTop ?? section.padding ?? 14}
+              onChange={(val) => handleFieldChange('paddingTop', val)}
+              step={2}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Bottom</span>
+            <NumberInput
+              value={section.paddingBottom ?? section.padding ?? 14}
+              onChange={(val) => handleFieldChange('paddingBottom', val)}
+              step={2}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Left</span>
+            <NumberInput
+              value={section.paddingLeft ?? 24}
+              onChange={(val) => handleFieldChange('paddingLeft', val)}
+              step={2}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Right</span>
+            <NumberInput
+              value={section.paddingRight ?? 24}
+              onChange={(val) => handleFieldChange('paddingRight', val)}
+              step={2}
+              suffix="px"
+            />
+          </div>
+        </div>
       </FieldGroup>
     </div>
   );

@@ -89,7 +89,7 @@ function ImageCollageSection({
                 borderRadius: '8px',
                 overflow: 'hidden',
                 backgroundColor: imageBg || '#f4f4f5',
-                minHeight: '80px',
+                minHeight: '20px',
                 position: 'relative'
               }}
             >

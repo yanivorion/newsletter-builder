@@ -263,10 +263,23 @@ function exportText(section) {
 
 function exportSectionHeader(section) {
   const fontStack = FONT_STACKS['Poppins'];
+  const bgColor = section.backgroundColor || '#04D1FC';
+  const gradientEnd = section.gradientEnd;
+  const gradientDirection = section.gradientDirection || '90deg';
+  
+  // Build background style with gradient support
+  const bgStyle = gradientEnd 
+    ? `background: linear-gradient(${gradientDirection}, ${bgColor} 0%, ${gradientEnd} 100%); background-color: ${bgColor};`
+    : `background-color: ${bgColor};`;
+  
+  const paddingTop = section.paddingTop ?? section.padding ?? 14;
+  const paddingBottom = section.paddingBottom ?? section.padding ?? 14;
+  const paddingLeft = section.paddingLeft ?? 24;
+  const paddingRight = section.paddingRight ?? 24;
   
   return `
     <tr>
-      <td style="background-color: ${section.backgroundColor || '#00D4D4'}; color: ${section.color || '#ffffff'}; padding: ${section.padding || 12}px 20px; text-align: center; font-family: ${fontStack}; font-size: ${section.fontSize || 18}px; font-weight: ${section.fontWeight || 700}; letter-spacing: ${section.letterSpacing || '0.1em'}; text-transform: uppercase;">
+      <td style="${bgStyle} color: ${section.color || '#ffffff'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; text-align: center; font-family: ${fontStack}; font-size: ${section.fontSize || 14}px; font-weight: ${section.fontWeight || 600}; letter-spacing: ${section.letterSpacing || '0.08em'}; text-transform: uppercase;">
         ${section.text || ''}
       </td>
     </tr>`;
