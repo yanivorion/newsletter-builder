@@ -635,7 +635,13 @@ function exportImageCollage(section, isGmail = false) {
       const cellWidthPct = Math.round((colSpan / cols) * 100);
       const cellHeightPx = (rowHeightUnit * rowSpan) + (gap * (rowSpan - 1));
       
-      // Build cell content - use 100% width images
+      // Is this the last column or last row?
+      const isLastColInRow = (c + colSpan >= cols);
+      const isLastRow = (r + rowSpan >= rows);
+      const marginRight = isLastColInRow ? 0 : gap;
+      const marginBottom = isLastRow ? 0 : gap;
+      
+      // Build cell content - use 100% width images with margin for gaps
       let cellContent;
       if (image) {
         const objectFit = bgColor ? 'contain' : 'cover';
@@ -643,29 +649,23 @@ function exportImageCollage(section, isGmail = false) {
           ? `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` 
           : '';
         
-        // Use width: 100% and max-width: 100% for containment in Gmail
+        // Use margin for gaps instead of padding - more reliable in email clients
         cellContent = `
-          <div style="position: relative; width: 100%; max-width: 100%; height: ${cellHeightPx}px; border-radius: 8px; overflow: hidden; background-color: ${bgColor || 'transparent'};">
+          <div style="position: relative; width: calc(100% - ${marginRight}px); max-width: calc(100% - ${marginRight}px); height: ${cellHeightPx}px; border-radius: 8px; overflow: hidden; background-color: ${bgColor || 'transparent'}; margin-right: ${marginRight}px; margin-bottom: ${marginBottom}px;">
             <img src="${image}" alt="Image ${cellId}" style="display: block; width: 100%; max-width: 100%; height: ${cellHeightPx}px; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
             ${overlayDiv}
           </div>`;
       } else {
         cellContent = `
-          <div style="width: 100%; height: ${cellHeightPx}px; background-color: #f4f4f5; border-radius: 8px; display: table;">
+          <div style="width: calc(100% - ${marginRight}px); height: ${cellHeightPx}px; background-color: #f4f4f5; border-radius: 8px; display: table; margin-right: ${marginRight}px; margin-bottom: ${marginBottom}px;">
             <div style="display: table-cell; vertical-align: middle; text-align: center; color: #a1a1aa; font-size: 14px;">
               ${cellId}
             </div>
           </div>`;
       }
       
-      // Is this the last column or last row?
-      const isLastColInRow = (c + colSpan >= cols);
-      const isLastRow = (r + rowSpan >= rows);
-      const paddingRight = isLastColInRow ? 0 : gap;
-      const paddingBottom = isLastRow ? 0 : gap;
-      
       rowHtml += `
-        <td${colSpan > 1 ? ` colspan="${colSpan}"` : ''}${rowSpan > 1 ? ` rowspan="${rowSpan}"` : ''} width="${cellWidthPct}%" valign="top" style="padding: 0 ${paddingRight}px ${paddingBottom}px 0; vertical-align: top;">
+        <td${colSpan > 1 ? ` colspan="${colSpan}"` : ''}${rowSpan > 1 ? ` rowspan="${rowSpan}"` : ''} width="${cellWidthPct}%" valign="top" style="vertical-align: top;">
           ${cellContent}
         </td>`;
     }
