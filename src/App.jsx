@@ -533,12 +533,38 @@ function getDefaultSectionData(sectionType) {
       backgroundColor: '#FFFFFF'
     },
     footer: {
-      backgroundColor: '#120F0F',
-      gradientEnd: '#5E5E5E',
-      text: 'Your Company\nContact Information',
-      color: '#FFFFFF',
-      fontSize: 14,
-      padding: 30
+      logo: null,
+      logoWidth: 120,
+      logoHeight: 40,
+      socialLinks: {
+        facebook: '#',
+        x: '#',
+        linkedin: '#',
+        instagram: '#',
+        rss: '#'
+      },
+      showSocial: true,
+      socialIconSize: 24,
+      socialIconColor: '#4B5563',
+      companyInfo: '100 Gansevoort St., New York, NY 10014 • Company Name',
+      showCompanyInfo: true,
+      companyInfoColor: '#374151',
+      companyInfoFontSize: 14,
+      footerLinks: [
+        { text: 'Unsubscribe', url: '#' },
+        { text: 'Help Center', url: '#' },
+        { text: 'Privacy Policy', url: '#' },
+        { text: 'Terms of Use', url: '#' }
+      ],
+      showFooterLinks: true,
+      linkColor: '#374151',
+      linkFontSize: 14,
+      showDivider: true,
+      dividerColor: '#E5E7EB',
+      backgroundColor: '#FFFFFF',
+      padding: 40,
+      fontFamily: 'Poppins',
+      textAlign: 'center'
     }
   };
 

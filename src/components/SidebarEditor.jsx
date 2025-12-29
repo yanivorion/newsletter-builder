@@ -389,14 +389,14 @@ function SidebarEditor({
                 <span className="w-2 h-2 rounded-sm bg-zinc-400"></span>
                 Outer Frame (Padding)
               </span>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <span className="text-[9px] text-zinc-400">Top</span>
                   <NumberInput
                     value={container.outerPaddingTop ?? container.outerPadding ?? 0}
                     onChange={(val) => handleContainerChange('outerPaddingTop', val)}
                     step={4}
-                    suffix=""
+                    suffix="px"
                   />
                 </div>
                 <div className="space-y-1">
@@ -405,7 +405,7 @@ function SidebarEditor({
                     value={container.outerPaddingBottom ?? container.outerPadding ?? 0}
                     onChange={(val) => handleContainerChange('outerPaddingBottom', val)}
                     step={4}
-                    suffix=""
+                    suffix="px"
                   />
                 </div>
                 <div className="space-y-1">
@@ -414,7 +414,7 @@ function SidebarEditor({
                     value={container.outerPaddingLeft ?? container.outerPadding ?? 0}
                     onChange={(val) => handleContainerChange('outerPaddingLeft', val)}
                     step={4}
-                    suffix=""
+                    suffix="px"
                   />
                 </div>
                 <div className="space-y-1">
@@ -423,7 +423,7 @@ function SidebarEditor({
                     value={container.outerPaddingRight ?? container.outerPadding ?? 0}
                     onChange={(val) => handleContainerChange('outerPaddingRight', val)}
                     step={4}
-                    suffix=""
+                    suffix="px"
                   />
                 </div>
               </div>
@@ -1645,53 +1645,311 @@ function SidebarEditor({
     </div>
   );
 
-  const renderFooterEditor = () => (
-    <div className="space-y-6">
-      {renderContainerSettings()}
-      
-      <FieldGroup label="Text">
-        <EditableTextarea
-          value={section.text || ''}
-          onChange={(val) => handleFieldChange('text', val)}
-          sectionKey={selectedSection}
-          rows={3}
-          placeholder="Footer content..."
-          className="resize-none"
-        />
-      </FieldGroup>
+  const renderFooterEditor = () => {
+    const socialLinks = section.socialLinks || {};
+    const footerLinks = section.footerLinks || [];
 
-      <FieldGroup label="Background">
-        <GradientPicker
-          startColor={section.backgroundColor}
-          endColor={section.gradientEnd}
-          onStartColorChange={(color) => handleFieldChange('backgroundColor', color)}
-          onEndColorChange={(color) => handleFieldChange('gradientEnd', color)}
-          sectionKey={selectedSection}
-        />
-      </FieldGroup>
+    const handleSocialLinkChange = (platform, url) => {
+      handleFieldChange('socialLinks', { ...socialLinks, [platform]: url });
+    };
 
-      <div className="grid grid-cols-2 gap-3">
-        <FieldGroup label="Text Color">
-          <input
-            type="color"
-            value={section.color || '#FFFFFF'}
-            onChange={(e) => handleFieldChange('color', e.target.value)}
-            className="w-full h-10 rounded-lg border border-zinc-200 cursor-pointer bg-transparent"
+    const handleFooterLinkChange = (index, field, value) => {
+      const newLinks = [...footerLinks];
+      newLinks[index] = { ...newLinks[index], [field]: value };
+      handleFieldChange('footerLinks', newLinks);
+    };
+
+    const addFooterLink = () => {
+      handleFieldChange('footerLinks', [...footerLinks, { text: 'New Link', url: '#' }]);
+    };
+
+    const removeFooterLink = (index) => {
+      handleFieldChange('footerLinks', footerLinks.filter((_, i) => i !== index));
+    };
+
+    return (
+      <div className="space-y-6">
+        {renderContainerSettings()}
+        
+        {/* Logo */}
+        <FieldGroup label="Logo">
+          <ImageUploader
+            currentImage={section.logo}
+            onImageUpload={(file) => handleImageUpload(file, 'logo')}
+            className="h-24"
           />
+          {section.logo && (
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-400">Width</span>
+                <NumberInput
+                  value={section.logoWidth || 120}
+                  onChange={(val) => handleFieldChange('logoWidth', val)}
+                  suffix="px"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[9px] text-zinc-400">Height</span>
+                <NumberInput
+                  value={section.logoHeight || 40}
+                  onChange={(val) => handleFieldChange('logoHeight', val)}
+                  suffix="px"
+                />
+              </div>
+            </div>
+          )}
         </FieldGroup>
 
-        <FieldGroup label="Font Size">
-          <NumberInput
-            value={section.fontSize || 14}
-            onChange={(val) => handleFieldChange('fontSize', val)}
-            
-            
-            suffix="px"
-          />
+        {/* Social Links */}
+        <FieldGroup label="Social Links">
+          <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer mb-3">
+            <input
+              type="checkbox"
+              checked={section.showSocial !== false}
+              onChange={(e) => handleFieldChange('showSocial', e.target.checked)}
+              className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC]"
+            />
+            Show social icons
+          </label>
+          {section.showSocial !== false && (
+            <div className="space-y-2">
+              {['facebook', 'x', 'linkedin', 'instagram', 'youtube', 'tiktok', 'rss'].map(platform => (
+                <div key={platform} className="flex items-center gap-2">
+                  <span className="text-[10px] text-zinc-500 w-16 capitalize">{platform}</span>
+                  <input
+                    type="text"
+                    defaultValue={socialLinks[platform] || ''}
+                    onBlur={(e) => handleSocialLinkChange(platform, e.target.value)}
+                    placeholder="URL or #"
+                    className="flex-1 h-8 px-2 text-xs rounded border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#04D1FC]"
+                  />
+                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-zinc-100">
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Icon Size</span>
+                  <NumberInput
+                    value={section.socialIconSize || 24}
+                    onChange={(val) => handleFieldChange('socialIconSize', val)}
+                    suffix="px"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Icon Color</span>
+                  <input
+                    type="color"
+                    value={section.socialIconColor || '#4B5563'}
+                    onChange={(e) => handleFieldChange('socialIconColor', e.target.value)}
+                    className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </FieldGroup>
+
+        {/* Company Info */}
+        <FieldGroup label="Company Info">
+          <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer mb-2">
+            <input
+              type="checkbox"
+              checked={section.showCompanyInfo !== false}
+              onChange={(e) => handleFieldChange('showCompanyInfo', e.target.checked)}
+              className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC]"
+            />
+            Show company info
+          </label>
+          {section.showCompanyInfo !== false && (
+            <>
+              <EditableTextarea
+                value={section.companyInfo || ''}
+                onChange={(val) => handleFieldChange('companyInfo', val)}
+                sectionKey={selectedSection}
+                rows={2}
+                placeholder="Address, company name..."
+                className="resize-none text-xs"
+              />
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Font Size</span>
+                  <NumberInput
+                    value={section.companyInfoFontSize || 14}
+                    onChange={(val) => handleFieldChange('companyInfoFontSize', val)}
+                    suffix="px"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Text Color</span>
+                  <input
+                    type="color"
+                    value={section.companyInfoColor || '#374151'}
+                    onChange={(e) => handleFieldChange('companyInfoColor', e.target.value)}
+                    className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </FieldGroup>
+
+        {/* Footer Links */}
+        <FieldGroup label="Footer Links">
+          <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer mb-2">
+            <input
+              type="checkbox"
+              checked={section.showFooterLinks !== false}
+              onChange={(e) => handleFieldChange('showFooterLinks', e.target.checked)}
+              className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC]"
+            />
+            Show footer links
+          </label>
+          {section.showFooterLinks !== false && (
+            <div className="space-y-2">
+              {footerLinks.map((link, index) => (
+                <div key={index} className="flex gap-1 items-center">
+                  <input
+                    type="text"
+                    defaultValue={link.text}
+                    onBlur={(e) => handleFooterLinkChange(index, 'text', e.target.value)}
+                    placeholder="Text"
+                    className="flex-1 h-8 px-2 text-xs rounded border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#04D1FC]"
+                  />
+                  <input
+                    type="text"
+                    defaultValue={link.url}
+                    onBlur={(e) => handleFooterLinkChange(index, 'url', e.target.value)}
+                    placeholder="URL"
+                    className="flex-1 h-8 px-2 text-xs rounded border border-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#04D1FC]"
+                  />
+                  <button
+                    onClick={() => removeFooterLink(index)}
+                    className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addFooterLink} className="w-full text-xs">
+                + Add Link
+              </Button>
+              <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-zinc-100">
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Link Color</span>
+                  <input
+                    type="color"
+                    value={section.linkColor || '#374151'}
+                    onChange={(e) => handleFieldChange('linkColor', e.target.value)}
+                    className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] text-zinc-400">Font Size</span>
+                  <NumberInput
+                    value={section.linkFontSize || 14}
+                    onChange={(val) => handleFieldChange('linkFontSize', val)}
+                    suffix="px"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </FieldGroup>
+
+        {/* Divider */}
+        <FieldGroup label="Divider">
+          <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={section.showDivider !== false}
+              onChange={(e) => handleFieldChange('showDivider', e.target.checked)}
+              className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC]"
+            />
+            Show divider line
+          </label>
+          {section.showDivider !== false && (
+            <div className="space-y-1 mt-2">
+              <span className="text-[9px] text-zinc-400">Divider Color</span>
+              <input
+                type="color"
+                value={section.dividerColor || '#E5E7EB'}
+                onChange={(e) => handleFieldChange('dividerColor', e.target.value)}
+                className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+              />
+            </div>
+          )}
+        </FieldGroup>
+
+        {/* Style */}
+        <FieldGroup label="Style">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <span className="text-[9px] text-zinc-400">Background</span>
+              <input
+                type="color"
+                value={section.backgroundColor || '#FFFFFF'}
+                onChange={(e) => handleFieldChange('backgroundColor', e.target.value)}
+                className="w-full h-8 rounded border border-zinc-200 cursor-pointer"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] text-zinc-400">Text Align</span>
+              <Select
+                value={section.textAlign || 'center'}
+                onChange={(e) => handleFieldChange('textAlign', e.target.value)}
+                className="h-8 text-xs"
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </Select>
+            </div>
+          </div>
+        </FieldGroup>
+
+        {/* Section Padding */}
+        <FieldGroup label="Section Padding">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <span className="text-[9px] text-zinc-400">Top</span>
+              <NumberInput
+                value={section.paddingTop ?? section.padding ?? 40}
+                onChange={(val) => handleFieldChange('paddingTop', val)}
+                step={4}
+                suffix="px"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] text-zinc-400">Bottom</span>
+              <NumberInput
+                value={section.paddingBottom ?? section.padding ?? 40}
+                onChange={(val) => handleFieldChange('paddingBottom', val)}
+                step={4}
+                suffix="px"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] text-zinc-400">Left</span>
+              <NumberInput
+                value={section.paddingLeft ?? section.padding ?? 40}
+                onChange={(val) => handleFieldChange('paddingLeft', val)}
+                step={4}
+                suffix="px"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] text-zinc-400">Right</span>
+              <NumberInput
+                value={section.paddingRight ?? section.padding ?? 40}
+                onChange={(val) => handleFieldChange('paddingRight', val)}
+                step={4}
+                suffix="px"
+              />
+            </div>
+          </div>
         </FieldGroup>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderMarqueeEditor = () => {
     const handleInsertIcon = (icon) => {
@@ -1977,6 +2235,47 @@ function SidebarEditor({
           />
         </div>
       </FieldGroup>
+
+      <FieldGroup label="Section Padding">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Top</span>
+            <NumberInput
+              value={section.paddingTop ?? section.padding ?? 40}
+              onChange={(val) => handleFieldChange('paddingTop', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Bottom</span>
+            <NumberInput
+              value={section.paddingBottom ?? section.padding ?? 40}
+              onChange={(val) => handleFieldChange('paddingBottom', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Left</span>
+            <NumberInput
+              value={section.paddingLeft ?? section.padding ?? 40}
+              onChange={(val) => handleFieldChange('paddingLeft', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Right</span>
+            <NumberInput
+              value={section.paddingRight ?? section.padding ?? 40}
+              onChange={(val) => handleFieldChange('paddingRight', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+        </div>
+      </FieldGroup>
     </div>
   );
 
@@ -2159,6 +2458,47 @@ function SidebarEditor({
               <option value="center">Center</option>
               <option value="left">Left</option>
             </Select>
+          </div>
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Section Padding">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Top</span>
+            <NumberInput
+              value={section.paddingTop ?? section.padding ?? 32}
+              onChange={(val) => handleFieldChange('paddingTop', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Bottom</span>
+            <NumberInput
+              value={section.paddingBottom ?? section.padding ?? 32}
+              onChange={(val) => handleFieldChange('paddingBottom', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Left</span>
+            <NumberInput
+              value={section.paddingLeft ?? section.padding ?? 32}
+              onChange={(val) => handleFieldChange('paddingLeft', val)}
+              step={4}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[9px] text-zinc-400">Right</span>
+            <NumberInput
+              value={section.paddingRight ?? section.padding ?? 32}
+              onChange={(val) => handleFieldChange('paddingRight', val)}
+              step={4}
+              suffix="px"
+            />
           </div>
         </div>
       </FieldGroup>

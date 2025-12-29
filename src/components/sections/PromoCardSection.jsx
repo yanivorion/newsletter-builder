@@ -43,6 +43,10 @@ function PromoCardSection({
   // Container
   backgroundColor = '#F8F9FA',
   padding = 32,
+  paddingTop,
+  paddingBottom,
+  paddingLeft,
+  paddingRight,
   borderRadius = 16,
   gap = 24,
   direction = 'rtl',
@@ -54,7 +58,10 @@ function PromoCardSection({
 }) {
   const containerStyle = {
     backgroundColor,
-    padding: `${padding}px`,
+    paddingTop: `${paddingTop ?? padding}px`,
+    paddingBottom: `${paddingBottom ?? padding}px`,
+    paddingLeft: `${paddingLeft ?? padding}px`,
+    paddingRight: `${paddingRight ?? padding}px`,
     borderRadius: `${borderRadius}px`,
     direction,
     fontFamily: `'${fontFamily}', Arial, sans-serif`,

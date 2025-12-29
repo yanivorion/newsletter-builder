@@ -29,12 +29,19 @@ function AccentTextSection({
   // Container
   backgroundColor = '#FFFFFF',
   padding = 40,
+  paddingTop,
+  paddingBottom,
+  paddingLeft,
+  paddingRight,
   direction = 'rtl',
   fontFamily = 'Noto Sans Hebrew'
 }) {
   const containerStyle = {
     backgroundColor,
-    padding: `${padding}px`,
+    paddingTop: `${paddingTop ?? padding}px`,
+    paddingBottom: `${paddingBottom ?? padding}px`,
+    paddingLeft: `${paddingLeft ?? padding}px`,
+    paddingRight: `${paddingRight ?? padding}px`,
     position: 'relative',
     direction,
     fontFamily: `'${fontFamily}', Arial, sans-serif`

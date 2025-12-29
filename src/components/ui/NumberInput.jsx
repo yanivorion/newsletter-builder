@@ -12,7 +12,8 @@ export function NumberInput({
   className,
   ...props 
 }) {
-  const [localValue, setLocalValue] = useState(value?.toString() || '');
+  // Always show a value, even if it's 0
+  const [localValue, setLocalValue] = useState(value !== undefined && value !== null ? value.toString() : '0');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -20,7 +21,7 @@ export function NumberInput({
   // Sync local value when prop changes (but not during editing)
   useEffect(() => {
     if (!isFocused) {
-      setLocalValue(value?.toString() || '');
+      setLocalValue(value !== undefined && value !== null ? value.toString() : '0');
     }
   }, [value, isFocused]);
 
