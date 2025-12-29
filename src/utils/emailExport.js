@@ -66,6 +66,15 @@ export function exportToHTML(newsletter) {
     return '';
   }
 
+  // Page settings with defaults
+  const pageSettings = newsletter.pageSettings || {};
+  const outerBg = pageSettings.outerBackgroundColor || '#F5F5F5';
+  const outerPadding = pageSettings.outerPadding ?? 20;
+  const innerBg = pageSettings.innerBackgroundColor || '#FFFFFF';
+  const innerBorderWidth = pageSettings.innerBorderWidth ?? 0;
+  const innerBorderColor = pageSettings.innerBorderColor || '#E5E5E5';
+  const innerBorderRadius = pageSettings.innerBorderRadius ?? 0;
+
   const sections = newsletter.sections.map(section => {
     let content;
     switch (section.type) {
@@ -104,6 +113,9 @@ export function exportToHTML(newsletter) {
     }
     return section.container ? wrapWithContainer(content, section.container) : content;
   }).join('\n');
+
+  // Build inner container style
+  const innerContainerStyle = `background-color: ${innerBg};${innerBorderWidth > 0 ? ` border: ${innerBorderWidth}px solid ${innerBorderColor};` : ''}${innerBorderRadius > 0 ? ` border-radius: ${innerBorderRadius}px;` : ''} overflow: hidden;`;
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -152,16 +164,16 @@ export function exportToHTML(newsletter) {
   </style>
   <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: ${FONT_STACKS['default']}; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f4f4f4;">
+<body style="margin: 0; padding: 0; background-color: ${outerBg}; font-family: ${FONT_STACKS['default']}; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: ${outerBg};">
     <tr>
-      <td align="center" style="padding: 20px 10px;">
+      <td align="center" style="padding: ${outerPadding}px 10px;">
         <!--[if mso]>
         <table role="presentation" align="center" border="0" cellspacing="0" cellpadding="0" width="600">
         <tr>
         <td>
         <![endif]-->
-        <table role="presentation" class="email-container" width="600" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff; margin: 0 auto;">
+        <table role="presentation" class="email-container" width="600" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; ${innerContainerStyle} margin: 0 auto;">
           ${sections}
         </table>
         <!--[if mso]>
@@ -181,6 +193,15 @@ export function exportForGmail(newsletter) {
   if (!newsletter || !newsletter.sections) {
     return '';
   }
+
+  // Page settings with defaults
+  const pageSettings = newsletter.pageSettings || {};
+  const outerBg = pageSettings.outerBackgroundColor || '#F5F5F5';
+  const outerPadding = pageSettings.outerPadding ?? 20;
+  const innerBg = pageSettings.innerBackgroundColor || '#FFFFFF';
+  const innerBorderWidth = pageSettings.innerBorderWidth ?? 0;
+  const innerBorderColor = pageSettings.innerBorderColor || '#E5E5E5';
+  const innerBorderRadius = pageSettings.innerBorderRadius ?? 0;
 
   const sections = newsletter.sections.map(section => {
     let content;
@@ -221,9 +242,19 @@ export function exportForGmail(newsletter) {
     return section.container ? wrapWithContainer(content, section.container) : content;
   }).join('\n');
 
-  // For Gmail - NO grey background, just clean white table that fits the compose window
-  return `<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; width: 100%; max-width: 600px; margin: 0 auto; font-family: ${FONT_STACKS['default']};">
-  ${sections}
+  // Build inner container style
+  const innerContainerStyle = `background-color: ${innerBg};${innerBorderWidth > 0 ? ` border: ${innerBorderWidth}px solid ${innerBorderColor};` : ''}${innerBorderRadius > 0 ? ` border-radius: ${innerBorderRadius}px;` : ''} overflow: hidden;`;
+
+  // For Gmail - Uses page settings for consistent appearance
+  // CRITICAL: 80% width with max-width, table-layout: fixed to prevent overflow
+  return `<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color: ${outerBg}; width: 80%; max-width: 600px; margin: 0 auto; font-family: ${FONT_STACKS['default']}; table-layout: fixed;">
+  <tr>
+    <td style="padding: ${outerPadding}px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${innerContainerStyle} width: 100%; table-layout: fixed;">
+        ${sections}
+      </table>
+    </td>
+  </tr>
 </table>`;
 }
 
@@ -251,7 +282,7 @@ function exportHeader(section, isGmail = false) {
   const badgeHtml = section.showDateBadge && section.dateBadgeText ? `
     <tr>
       <td align="right" style="padding: 0 20px 16px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           <tr>
             <td style="background-color: ${section.dateBadgeBg || '#04D1FC'}; color: ${section.dateBadgeColor || '#ffffff'}; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: ${fontStack}; letter-spacing: 0.05em;">
               ${section.dateBadgeText}
@@ -278,7 +309,7 @@ function exportHeader(section, isGmail = false) {
   return `
     <tr>
       <td style="${bgStyle}">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           ${section.logo ? `
           <tr>
             <td align="${logoAlignment}" style="padding: 40px 20px 20px;">
@@ -357,7 +388,7 @@ function exportSectionHeader(section) {
   return `
     <tr>
       <td style="padding: 0;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           <tr>
             <td style="${bgStyle} color: ${section.color || '#ffffff'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; text-align: center; font-family: ${fontStack}; font-size: ${section.fontSize || 14}px; font-weight: ${section.fontWeight || 600}; letter-spacing: ${section.letterSpacing || '0.08em'}; text-transform: uppercase; border-radius: ${borderRadius}px;">
               ${section.text || ''}
@@ -387,7 +418,7 @@ function exportAccentText(section) {
   const tagHtml = section.tagText ? `
     <tr>
       <td align="${tagAlign}" style="padding-bottom: ${tagToContentGap}px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           <tr>
             <td align="center" valign="middle" style="background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 10px 24px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack}; line-height: 1.2; mso-padding-alt: 12px 24px;">
               ${section.tagText}
@@ -464,7 +495,7 @@ function exportPromoCard(section, isGmail = false) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#F8F9FA'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; border-radius: ${section.borderRadius || 16}px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" dir="${direction}" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" dir="${direction}" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           <tr>
             ${rowContent}
           </tr>
@@ -612,10 +643,10 @@ function exportImageCollage(section, isGmail = false) {
           ? `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${overlay.color}; opacity: ${overlay.opacity / 100};"></div>` 
           : '';
         
-        // Use width: 100% for auto-fit in Gmail
+        // Use width: 100% and max-width: 100% for containment in Gmail
         cellContent = `
-          <div style="position: relative; width: 100%; height: ${cellHeightPx}px; border-radius: 8px; overflow: hidden; background-color: ${bgColor || 'transparent'};">
-            <img src="${image}" alt="Image ${cellId}" style="display: block; width: 100%; height: ${cellHeightPx}px; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
+          <div style="position: relative; width: 100%; max-width: 100%; height: ${cellHeightPx}px; border-radius: 8px; overflow: hidden; background-color: ${bgColor || 'transparent'};">
+            <img src="${image}" alt="Image ${cellId}" style="display: block; width: 100%; max-width: 100%; height: ${cellHeightPx}px; object-fit: ${objectFit}; object-position: ${focalPoint.x}% ${focalPoint.y}%;" />
             ${overlayDiv}
           </div>`;
       } else {
@@ -648,7 +679,7 @@ function exportImageCollage(section, isGmail = false) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 16px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           ${tableRowsHtml}
         </table>
       </td>
@@ -684,7 +715,7 @@ function exportProfileCards(section) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 30px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           <tr>
             ${profileCells}
           </tr>
@@ -701,7 +732,7 @@ function exportRecipe(section, isGmail = false) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 30px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           <tr>
             <td align="center">
               <h2 dir="rtl" style="font-family: ${fontStack}; font-size: 24px; font-weight: 600; color: #333333; margin: 0 0 20px;">${section.title || ''}</h2>
@@ -793,7 +824,7 @@ function exportFooter(section) {
     content += `
       <tr>
         <td style="padding: 0 0 20px;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
             <tr>
               <td style="border-top: ${section.dividerWidth || 1}px solid ${section.dividerColor || '#E5E7EB'};"></td>
             </tr>
@@ -842,7 +873,7 @@ function exportFooter(section) {
   return `
     <tr>
       <td style="background-color: ${bgColor}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
           ${content}
         </table>
       </td>

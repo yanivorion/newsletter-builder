@@ -101,6 +101,16 @@ function AppContent() {
     }));
   }, [setNewsletter]);
 
+  const handlePageSettingsUpdate = useCallback((updates) => {
+    setNewsletter(prev => ({
+      ...prev,
+      pageSettings: {
+        ...prev.pageSettings,
+        ...updates
+      }
+    }));
+  }, [setNewsletter]);
+
   const handleToggleUnlock = useCallback(() => {
     setIsUnlocked(prev => !prev);
   }, []);
@@ -508,6 +518,7 @@ function AppContent() {
             onAddSection={handleAddSection}
             onReorderSections={handleReorderSections}
             onSectionUpdate={handleSectionUpdate}
+            onPageSettingsUpdate={handlePageSettingsUpdate}
             isUnlocked={isUnlocked}
           />
         </div>
@@ -517,6 +528,7 @@ function AppContent() {
           newsletter={newsletter}
           selectedSection={selectedSection}
           onSectionUpdate={handleSectionUpdate}
+          onPageSettingsUpdate={handlePageSettingsUpdate}
           onDeleteSection={handleDeleteSection}
           onMoveSection={handleMoveSection}
           isUnlocked={isUnlocked}

@@ -5,6 +5,15 @@ import { ArrowRight, FolderOpen, Upload, Trash2, FileJson } from 'lucide-react';
 const blankTemplate = {
   id: 'blank',
   name: 'New Newsletter',
+  // Page-level container settings (wrapper around all sections)
+  pageSettings: {
+    outerBackgroundColor: '#F5F5F5', // Background of the full page
+    outerPadding: 20,                 // Padding around the content container
+    innerBackgroundColor: '#FFFFFF',  // Background of the content area
+    innerBorderWidth: 0,
+    innerBorderColor: '#E5E5E5',
+    innerBorderRadius: 0
+  },
   sections: [
     { 
       id: 'header-1', 

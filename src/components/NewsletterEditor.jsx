@@ -48,6 +48,7 @@ function NewsletterEditor({
   onAddSection,
   onReorderSections,
   onSectionUpdate,
+  onPageSettingsUpdate,
   isUnlocked 
 }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -250,9 +251,30 @@ function NewsletterEditor({
       )}
 
       {/* Newsletter Preview */}
-      <div className="mx-auto w-full max-w-[600px]">
-        <div className="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
-          {newsletter.sections.map((section, index) => renderSection(section, index))}
+      <div className="mx-auto w-full max-w-[700px]">
+        {/* Outer Page Background */}
+        <div 
+          style={{
+            backgroundColor: newsletter.pageSettings?.outerBackgroundColor || '#F5F5F5',
+            padding: `${newsletter.pageSettings?.outerPadding || 20}px`,
+            borderRadius: '12px',
+          }}
+          className="shadow-sm border border-zinc-200"
+        >
+          {/* Inner Content Container */}
+          <div 
+            style={{
+              backgroundColor: newsletter.pageSettings?.innerBackgroundColor || '#FFFFFF',
+              borderRadius: `${newsletter.pageSettings?.innerBorderRadius || 0}px`,
+              border: newsletter.pageSettings?.innerBorderWidth 
+                ? `${newsletter.pageSettings.innerBorderWidth}px solid ${newsletter.pageSettings?.innerBorderColor || '#E5E5E5'}`
+                : 'none',
+              overflow: 'hidden',
+            }}
+          >
+            {/* All sections render inside here with consistent width */}
+            {newsletter.sections.map((section, index) => renderSection(section, index))}
+          </div>
         </div>
       </div>
     </div>

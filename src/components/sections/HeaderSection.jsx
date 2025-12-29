@@ -135,8 +135,13 @@ function HeaderSection({
     }
   };
 
+  // Support transparent background to show container's background image
+  const hasBackground = backgroundColor && backgroundColor !== 'transparent' && backgroundColor !== '';
+  
   const headerStyle = {
-    background: `linear-gradient(135deg, ${backgroundColor || '#04D1FC'} 0%, ${gradientEnd || '#17A298'} 100%)`,
+    background: hasBackground 
+      ? `linear-gradient(135deg, ${backgroundColor} 0%, ${gradientEnd || backgroundColor} 100%)`
+      : 'transparent',
     paddingLeft: `${paddingHorizontal}px`,
     paddingRight: `${paddingHorizontal}px`,
     textAlign: 'center',

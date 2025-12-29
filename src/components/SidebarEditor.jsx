@@ -107,6 +107,7 @@ function SidebarEditor({
   newsletter, 
   selectedSection, 
   onSectionUpdate, 
+  onPageSettingsUpdate,
   onDeleteSection, 
   onMoveSection,
   isUnlocked,
@@ -837,13 +838,35 @@ function SidebarEditor({
               />
             </div>
           </div>
-          <GradientPicker
-            startColor={section.backgroundColor}
-            endColor={section.gradientEnd}
-            onStartColorChange={(color) => handleFieldChange('backgroundColor', color)}
-            onEndColorChange={(color) => handleFieldChange('gradientEnd', color)}
-            sectionKey={selectedSection}
-          />
+          
+          {/* Transparent background toggle - to show container's background image */}
+          <div className="flex items-center gap-2 p-2 bg-zinc-50 rounded-lg">
+            <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={section.backgroundColor === 'transparent'}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    handleFieldChange('backgroundColor', 'transparent');
+                  } else {
+                    handleFieldChange('backgroundColor', '#04D1FC');
+                  }
+                }}
+                className="rounded border-zinc-300 text-[#04D1FC] focus:ring-[#04D1FC]"
+              />
+              Transparent (use container BG image)
+            </label>
+          </div>
+          
+          {section.backgroundColor !== 'transparent' && (
+            <GradientPicker
+              startColor={section.backgroundColor}
+              endColor={section.gradientEnd}
+              onStartColorChange={(color) => handleFieldChange('backgroundColor', color)}
+              onEndColorChange={(color) => handleFieldChange('gradientEnd', color)}
+              sectionKey={selectedSection}
+            />
+          )}
         </div>
       </FieldGroup>
 
@@ -2699,13 +2722,91 @@ function SidebarEditor({
         {activeTab === 'edit' && (
           <>
             {!selectedSection ? (
-              <div className="h-full flex items-center justify-center p-8">
-                <div className="text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-4">
-                    <MousePointerClick className="w-6 h-6 text-zinc-400" />
+              <div className="p-4">
+                {/* Page Settings when no section selected */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center">
+                      <Layers className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-semibold text-zinc-900">Page Settings</h2>
+                      <p className="text-[10px] text-zinc-400">Global canvas container</p>
+                    </div>
                   </div>
-                  <p className="text-sm font-medium text-zinc-600 mb-1">No section selected</p>
-                  <p className="text-xs text-zinc-400">Click a section in the preview to edit</p>
+                </div>
+
+                {/* Outer Container */}
+                <FieldGroup label="Page Background">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-400">Outer Background Color</span>
+                      <ImageColorPicker
+                        value={newsletter?.pageSettings?.outerBackgroundColor || '#F5F5F5'}
+                        onChange={(val) => onPageSettingsUpdate?.({ outerBackgroundColor: val })}
+                        placeholder="#F5F5F5"
+                        allowClear
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-400">Outer Padding</span>
+                      <NumberInput
+                        value={newsletter?.pageSettings?.outerPadding ?? 20}
+                        onChange={(val) => onPageSettingsUpdate?.({ outerPadding: val })}
+                        step={4}
+                        suffix="px"
+                      />
+                    </div>
+                  </div>
+                </FieldGroup>
+
+                {/* Inner Container */}
+                <FieldGroup label="Content Container">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-400">Background Color</span>
+                      <ImageColorPicker
+                        value={newsletter?.pageSettings?.innerBackgroundColor || '#FFFFFF'}
+                        onChange={(val) => onPageSettingsUpdate?.({ innerBackgroundColor: val })}
+                        placeholder="#FFFFFF"
+                        allowClear
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-zinc-400">Border Width</span>
+                        <NumberInput
+                          value={newsletter?.pageSettings?.innerBorderWidth ?? 0}
+                          onChange={(val) => onPageSettingsUpdate?.({ innerBorderWidth: val })}
+                          step={1}
+                          suffix="px"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-zinc-400">Border Radius</span>
+                        <NumberInput
+                          value={newsletter?.pageSettings?.innerBorderRadius ?? 0}
+                          onChange={(val) => onPageSettingsUpdate?.({ innerBorderRadius: val })}
+                          step={2}
+                          suffix="px"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-zinc-400">Border Color</span>
+                      <ImageColorPicker
+                        value={newsletter?.pageSettings?.innerBorderColor || '#E5E5E5'}
+                        onChange={(val) => onPageSettingsUpdate?.({ innerBorderColor: val })}
+                        placeholder="#E5E5E5"
+                        allowClear
+                      />
+                    </div>
+                  </div>
+                </FieldGroup>
+
+                <div className="mt-6 p-3 bg-zinc-50 rounded-lg text-center">
+                  <MousePointerClick className="w-5 h-5 text-zinc-300 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-400">Click a section to edit its content</p>
                 </div>
               </div>
             ) : (
