@@ -150,7 +150,8 @@ function NewsletterEditor({
 
     return (
       <div 
-        key={section.id} 
+        key={section.id}
+        data-section-id={section.id}
         draggable={isUnlocked}
         onDragStart={(e) => handleDragStart(e, index)}
         onDragEnd={handleDragEnd}

@@ -11,7 +11,8 @@ import {
   Lock,
   Unlock,
   Layers,
-  FileImage
+  FileImage,
+  Camera
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Select } from './ui/Input';
@@ -1358,6 +1359,49 @@ function SidebarEditor({
             </FieldGroup>
           </>
         )}
+
+        {/* Snapshot to Image - backup for email clients that don't render gaps */}
+        <FieldGroup label="Export as Image">
+          <p className="text-[9px] text-zinc-400 mb-2">
+            If gaps don't render correctly in email, snapshot the collage as a single image
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={async () => {
+              // Find the collage section element in the preview
+              const collageElement = document.querySelector(`[data-section-id="${selectedSection}"]`);
+              if (!collageElement) {
+                alert('Could not find collage element');
+                return;
+              }
+              
+              try {
+                // Dynamic import html2canvas
+                const html2canvas = (await import('html2canvas')).default;
+                const canvas = await html2canvas(collageElement, {
+                  backgroundColor: section.backgroundColor || '#ffffff',
+                  scale: 2,
+                  useCORS: true,
+                  allowTaint: true
+                });
+                
+                // Download as image
+                const link = document.createElement('a');
+                link.download = `collage-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+              } catch (error) {
+                console.error('Snapshot failed:', error);
+                alert('Snapshot failed: ' + error.message);
+              }
+            }}
+          >
+            <Camera className="w-4 h-4" />
+            Snapshot as PNG
+          </Button>
+        </FieldGroup>
       </div>
     );
   };
