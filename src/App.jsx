@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowLeft, Download, Copy, X, Mail, Undo2, Redo2, Clipboard, Check, Save, Upload, FolderOpen, FileJson, MoreVertical } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
 import TemplateSelector from './components/TemplateSelector';
 import NewsletterEditor from './components/NewsletterEditor';
@@ -9,6 +9,7 @@ import { exportToHTML, exportForGmail } from './utils/emailExport';
 import { cn } from './lib/utils';
 import { useHistory } from './hooks/useHistory';
 import { useAutosave } from './hooks/useAutosave';
+import { useProjects } from './hooks/useProjects';
 
 function AppContent() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -35,6 +36,23 @@ function AppContent() {
     getLastSaveTime,
     hasSavedNewsletter
   } = useAutosave(newsletter, setNewsletter);
+
+  // Use projects hook
+  const {
+    projects,
+    saveProject,
+    deleteProject,
+    loadProject,
+    renameProject,
+    duplicateProject,
+    exportAsJSON,
+    importFromJSON
+  } = useProjects();
+
+  // File input ref for JSON import
+  const fileInputRef = useRef(null);
+  const [showProjectsMenu, setShowProjectsMenu] = useState(false);
+  const [savedToProject, setSavedToProject] = useState(false);
 
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
@@ -193,6 +211,77 @@ function AppContent() {
     setSelectedSection(null);
   };
 
+  // Download JSON
+  const handleDownloadJSON = () => {
+    if (newsletter) {
+      exportAsJSON(newsletter);
+    }
+  };
+
+  // Upload JSON
+  const handleUploadJSON = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imported = await importFromJSON(file);
+      setSelectedTemplate({ name: imported.name || 'Imported Newsletter' });
+      setNewsletter(imported);
+    } catch (error) {
+      alert(`Import failed: ${error.message}`);
+    }
+    
+    // Reset input
+    event.target.value = '';
+  };
+
+  // Save to projects
+  const handleSaveToProject = () => {
+    if (newsletter) {
+      const projectName = newsletter.name || prompt('Enter project name:', 'My Newsletter');
+      if (projectName) {
+        const project = saveProject(newsletter, projectName);
+        setNewsletter(prev => ({ ...prev, projectId: project.id, name: projectName }));
+        setSavedToProject(true);
+        setTimeout(() => setSavedToProject(false), 2000);
+      }
+    }
+  };
+
+  // Load from projects
+  const handleLoadProject = (projectId) => {
+    const projectData = loadProject(projectId);
+    if (projectData) {
+      setSelectedTemplate({ name: projectData.name || 'Loaded Project' });
+      setNewsletter(projectData);
+      setShowProjectsMenu(false);
+    }
+  };
+
+  // Delete project
+  const handleDeleteProject = (projectId, e) => {
+    e.stopPropagation();
+    if (confirm('Delete this project?')) {
+      deleteProject(projectId);
+    }
+  };
+
+  // Handle import from landing page
+  const handleImportFromLanding = async (file) => {
+    const imported = await importFromJSON(file);
+    setSelectedTemplate({ name: imported.name || 'Imported Newsletter' });
+    setNewsletter(imported);
+  };
+
+  // Handle load project from landing page
+  const handleLoadProjectFromLanding = (projectId) => {
+    const projectData = loadProject(projectId);
+    if (projectData) {
+      setSelectedTemplate({ name: projectData.name || 'Loaded Project' });
+      setNewsletter(projectData);
+    }
+  };
+
   if (!selectedTemplate) {
     return (
       <TemplateSelector 
@@ -200,6 +289,10 @@ function AppContent() {
         hasSavedNewsletter={hasSavedNewsletter()}
         onContinueEditing={handleContinueEditing}
         lastSaveTime={getLastSaveTime()}
+        projects={projects}
+        onLoadProject={handleLoadProjectFromLanding}
+        onDeleteProject={deleteProject}
+        onImportJSON={handleImportFromLanding}
       />
     );
   }
@@ -266,6 +359,117 @@ function AppContent() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Projects Dropdown */}
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowProjectsMenu(!showProjectsMenu)}
+              className="text-zinc-600"
+            >
+              <FolderOpen className="w-4 h-4" />
+              Projects
+            </Button>
+            
+            {showProjectsMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowProjectsMenu(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-xl border border-zinc-200 py-2 z-50 max-h-80 overflow-y-auto">
+                  <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide border-b border-zinc-100 mb-1">
+                    Saved Projects ({projects.length})
+                  </div>
+                  {projects.length === 0 ? (
+                    <div className="px-3 py-4 text-sm text-zinc-400 text-center">
+                      No saved projects yet
+                    </div>
+                  ) : (
+                    projects.map(project => (
+                      <div
+                        key={project.id}
+                        className="px-3 py-2 hover:bg-zinc-50 cursor-pointer flex items-center justify-between group"
+                        onClick={() => handleLoadProject(project.id)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-zinc-700 truncate">
+                            {project.name}
+                          </div>
+                          <div className="text-xs text-zinc-400">
+                            {new Date(project.updatedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteProject(project.id, e)}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Save to Project */}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleSaveToProject}
+            className={cn(
+              "text-zinc-600",
+              savedToProject && "text-emerald-600"
+            )}
+          >
+            {savedToProject ? (
+              <>
+                <Check className="w-4 h-4" />
+                Saved!
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save
+              </>
+            )}
+          </Button>
+
+          <div className="h-5 w-px bg-zinc-200" />
+
+          {/* Download JSON */}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleDownloadJSON}
+            className="text-zinc-600"
+            title="Download as JSON"
+          >
+            <FileJson className="w-4 h-4" />
+          </Button>
+
+          {/* Upload JSON */}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-zinc-600"
+            title="Upload JSON"
+          >
+            <Upload className="w-4 h-4" />
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleUploadJSON}
+            className="hidden"
+          />
+
+          <div className="h-5 w-px bg-zinc-200" />
+
           <Button 
             onClick={handleCopyDesign} 
             size="sm"

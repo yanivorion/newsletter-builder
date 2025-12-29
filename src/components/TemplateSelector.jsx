@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ArrowRight, FolderOpen, Upload, Trash2, FileJson } from 'lucide-react';
 
 // Blank starter template
 const blankTemplate = {
@@ -27,8 +27,30 @@ const blankTemplate = {
   ]
 };
 
-function TemplateSelector({ onSelectTemplate, hasSavedNewsletter, onContinueEditing }) {
+function TemplateSelector({ 
+  onSelectTemplate, 
+  hasSavedNewsletter, 
+  onContinueEditing,
+  projects = [],
+  onLoadProject,
+  onDeleteProject,
+  onImportJSON
+}) {
   const [hoveredButton, setHoveredButton] = useState(null);
+  const [hoveredProject, setHoveredProject] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (file && onImportJSON) {
+      try {
+        await onImportJSON(file);
+      } catch (error) {
+        alert(`Import failed: ${error.message}`);
+      }
+    }
+    e.target.value = '';
+  };
 
   // Colors
   const backgroundColor = "#FFFFFF";
@@ -159,7 +181,158 @@ function TemplateSelector({ onSelectTemplate, hasSavedNewsletter, onContinueEdit
               Continue Editing
             </button>
           )}
+
+          {/* Upload JSON Button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            onMouseEnter={() => setHoveredButton('upload')}
+            onMouseLeave={() => setHoveredButton(null)}
+            style={{
+              backgroundColor: secondaryButtonBg,
+              color: secondaryButtonText,
+              border: `1px solid ${cardBorderColor}`,
+              borderRadius: '8px',
+              padding: '16px 32px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              opacity: hoveredButton === 'upload' ? 0.9 : 1,
+              transform: hoveredButton === 'upload' ? 'translateY(-2px)' : 'translateY(0)',
+              transition: 'all 250ms ease-out',
+              boxShadow: hoveredButton === 'upload' ? '0 8px 16px rgba(0,0,0,0.08)' : '0 2px 4px rgba(0,0,0,0.04)'
+            }}
+          >
+            <Upload size={18} />
+            Import JSON
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
         </div>
+
+        {/* Saved Projects Section */}
+        {projects.length > 0 && (
+          <div style={{
+            marginTop: '80px',
+            textAlign: 'left'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '24px',
+              justifyContent: 'center'
+            }}>
+              <FolderOpen size={20} color={subheadlineColor} />
+              <h2 style={{
+                fontSize: '18px',
+                fontWeight: '500',
+                color: heroTextColor,
+                margin: 0
+              }}>
+                Your Projects ({projects.length})
+              </h2>
+            </div>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '16px',
+              maxWidth: '900px',
+              margin: '0 auto'
+            }}>
+              {projects.map(project => (
+                <div
+                  key={project.id}
+                  onClick={() => onLoadProject?.(project.id)}
+                  onMouseEnter={() => setHoveredProject(project.id)}
+                  onMouseLeave={() => setHoveredProject(null)}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    border: `1px solid ${hoveredProject === project.id ? '#1C1917' : cardBorderColor}`,
+                    borderRadius: '12px',
+                    padding: '20px',
+                    cursor: 'pointer',
+                    transition: 'all 200ms ease-out',
+                    transform: hoveredProject === project.id ? 'translateY(-2px)' : 'translateY(0)',
+                    boxShadow: hoveredProject === project.id ? '0 8px 24px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.04)',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '500',
+                        color: heroTextColor,
+                        marginBottom: '4px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {project.name}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: subheadlineColor
+                      }}>
+                        {new Date(project.updatedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </div>
+                    </div>
+                    {onDeleteProject && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('Delete this project?')) {
+                            onDeleteProject(project.id);
+                          }
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '4px',
+                          cursor: 'pointer',
+                          opacity: hoveredProject === project.id ? 1 : 0,
+                          transition: 'opacity 150ms',
+                          color: '#EF4444',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                  <div style={{
+                    marginTop: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    color: subheadlineColor
+                  }}>
+                    <FileJson size={14} />
+                    {project.data?.sections?.length || 0} sections
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

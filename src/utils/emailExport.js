@@ -286,15 +286,19 @@ function exportAccentText(section) {
   
   const content = (section.content || '').replace(/\n\n/g, '</p><p style="margin: 0 0 1em;">').replace(/\n/g, '<br>');
   
-  // Tag badge - positioned correctly with proper alignment
+  // Tag badge - positioned correctly with proper alignment and centered text
   const tagAlign = section.tagPosition === 'top-left' ? 'left' : 'right';
   const tagHtml = section.tagText ? `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
       <tr>
         <td align="${tagAlign}" style="padding-bottom: ${tagToContentGap}px;">
-          <div style="display: inline-block; background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 8px 20px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack};">
-            ${section.tagText}
-          </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="display: inline-table;">
+            <tr>
+              <td style="background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 10px 24px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack}; text-align: center; vertical-align: middle; line-height: 1.2;">
+                ${section.tagText}
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>` : '';
