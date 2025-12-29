@@ -228,17 +228,25 @@ function SidebarEditor({
     }
   }, [section, handleFieldChange]);
 
-  const handleImageUpload = useCallback(async (file, field) => {
+  const handleImageUpload = useCallback(async (fileOrUrl, field) => {
     // Handle removal (null/undefined)
-    if (!file) {
+    if (!fileOrUrl) {
       handleFieldChange(field, null);
       return;
     }
+    
+    // If it's a URL string, use it directly (no base64 conversion!)
+    if (typeof fileOrUrl === 'string') {
+      handleFieldChange(field, fileOrUrl);
+      return;
+    }
+    
+    // If it's a File, convert to base64
     const reader = new FileReader();
     reader.onload = (e) => {
       handleFieldChange(field, e.target.result);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(fileOrUrl);
   }, [handleFieldChange]);
 
   const handleRemoveBackground = useCallback(async (imageField) => {
@@ -293,15 +301,26 @@ function SidebarEditor({
     }
   }, [section, handleFieldChange]);
 
-  const handleArrayImageUpload = useCallback(async (file, arrayField, index) => {
+  const handleArrayImageUpload = useCallback(async (fileOrUrl, arrayField, index) => {
     // Handle removal (null/undefined)
-    if (!file) {
+    if (!fileOrUrl) {
       const currentArray = section?.[arrayField] || [];
       const newArray = [...currentArray];
       newArray[index] = null;
       handleFieldChange(arrayField, newArray);
       return;
     }
+    
+    // If it's a URL string, use it directly (no base64!)
+    if (typeof fileOrUrl === 'string') {
+      const currentArray = section?.[arrayField] || [];
+      const newArray = [...currentArray];
+      newArray[index] = fileOrUrl;
+      handleFieldChange(arrayField, newArray);
+      return;
+    }
+    
+    // If it's a File, convert to base64
     const reader = new FileReader();
     reader.onload = (e) => {
       const currentArray = section?.[arrayField] || [];
