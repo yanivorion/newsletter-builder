@@ -1,5 +1,8 @@
 // Email-compatible HTML export - Minified for smaller size
 
+// Google Fonts URL (shorter - only essential weights)
+const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap';
+
 // Minify HTML - removes whitespace, newlines, and compresses output
 function minifyHTML(html) {
   return html
