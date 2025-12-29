@@ -1,9 +1,43 @@
-// Email-compatible HTML export
-// Uses table-based layout with inline styles for maximum email client compatibility
-// Following professional email template patterns (like Beefree)
+// Email-compatible HTML export - Minified for smaller size
 
-// Google Fonts URL for email - includes all weights
-const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@100;200;300;400;500;600;700;800;900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap';
+// Minify HTML - removes whitespace, newlines, and compresses output
+function minifyHTML(html) {
+  return html
+    .replace(/\s+/g, ' ')           // Collapse whitespace
+    .replace(/>\s+</g, '><')        // Remove space between tags
+    .replace(/\s*;\s*/g, ';')       // Remove space around semicolons
+    .replace(/\s*:\s*/g, ':')       // Remove space around colons in styles
+    .replace(/\s*,\s*/g, ',')       // Remove space around commas
+    .replace(/;\s*"/g, '"')         // Remove trailing semicolon before quote
+    .replace(/"\s+style/g, '" style') // Keep space before style attr
+    .replace(/"\s+width/g, '" width') // Keep space before width attr
+    .replace(/"\s+height/g, '" height')
+    .replace(/"\s+align/g, '" align')
+    .replace(/"\s+valign/g, '" valign')
+    .replace(/"\s+cellspacing/g, '" cellspacing')
+    .replace(/"\s+cellpadding/g, '" cellpadding')
+    .replace(/"\s+border/g, '" border')
+    .replace(/"\s+role/g, '" role')
+    .replace(/"\s+alt/g, '" alt')
+    .replace(/"\s+src/g, '" src')
+    .replace(/"\s+href/g, '" href')
+    .replace(/"\s+dir/g, '" dir')
+    .replace(/"\s+colspan/g, '" colspan')
+    .replace(/"\s+rowspan/g, '" rowspan')
+    .trim();
+}
+
+// Shorter font stacks for smaller output
+const FONT_STACKS = {
+  'Poppins': "Poppins,Arial,sans-serif",
+  'Noto Sans Hebrew': "'Noto Sans Hebrew',Arial,sans-serif",
+  'Inter': "Inter,Arial,sans-serif",
+  'default': "Arial,sans-serif"
+};
+
+// Common table attributes - shortened
+const T = 'role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"';
+const TF = `${T} style="table-layout:fixed"`;
 
 // Font stacks with proper fallbacks for email clients
 const FONT_STACKS = {
@@ -17,48 +51,32 @@ function getFontStack(fontFamily) {
   return FONT_STACKS[fontFamily] || FONT_STACKS['default'];
 }
 
-// Wrap content in container frame if present
+// Wrap content in container frame - compact output
 function wrapWithContainer(content, container) {
   if (!container) return content;
   
-  const outerPaddingTop = container.outerPaddingTop ?? container.outerPadding ?? 0;
-  const outerPaddingBottom = container.outerPaddingBottom ?? container.outerPadding ?? 0;
-  const outerPaddingLeft = container.outerPaddingLeft ?? container.outerPadding ?? 0;
-  const outerPaddingRight = container.outerPaddingRight ?? container.outerPadding ?? 0;
-  const outerBg = container.outerBackgroundColor || 'transparent';
+  const pt = container.outerPaddingTop ?? container.outerPadding ?? 0;
+  const pb = container.outerPaddingBottom ?? container.outerPadding ?? 0;
+  const pl = container.outerPaddingLeft ?? container.outerPadding ?? 0;
+  const pr = container.outerPaddingRight ?? container.outerPadding ?? 0;
+  const bg = container.outerBackgroundColor || 'transparent';
+  const bw = container.innerBorderWidth || 0;
+  const bc = container.innerBorderColor || '#E5E5E5';
+  const br = container.innerBorderRadius || 0;
+  const ibg = container.innerBackgroundColor || 'transparent';
+  const img = container.backgroundImage;
   
-  const innerBorderWidth = container.innerBorderWidth || 0;
-  const innerBorderColor = container.innerBorderColor || '#E5E5E5';
-  const innerBorderRadius = container.innerBorderRadius || 0;
-  const innerBg = container.innerBackgroundColor || 'transparent';
-  const bgImage = container.backgroundImage;
-  
-  // If no container styling needed, return content as-is
-  if (outerPaddingTop === 0 && outerPaddingBottom === 0 && outerPaddingLeft === 0 && 
-      outerPaddingRight === 0 && outerBg === 'transparent' && innerBorderWidth === 0 && 
-      innerBorderRadius === 0 && innerBg === 'transparent' && !bgImage) {
+  // Skip if no styling needed
+  if (pt === 0 && pb === 0 && pl === 0 && pr === 0 && bg === 'transparent' && bw === 0 && br === 0 && ibg === 'transparent' && !img) {
     return content;
   }
   
-  let innerStyle = `background-color: ${innerBg};`;
-  if (innerBorderWidth > 0) {
-    innerStyle += ` border: ${innerBorderWidth}px solid ${innerBorderColor};`;
-  }
-  if (innerBorderRadius > 0) {
-    innerStyle += ` border-radius: ${innerBorderRadius}px;`;
-  }
-  if (bgImage) {
-    innerStyle += ` background-image: url(${bgImage}); background-size: 100% auto; background-position: center; background-repeat: no-repeat;`;
-  }
+  let s = `background-color:${ibg};`;
+  if (bw > 0) s += `border:${bw}px solid ${bc};`;
+  if (br > 0) s += `border-radius:${br}px;`;
+  if (img) s += `background-image:url(${img});background-size:100% auto;background-position:center;background-repeat:no-repeat;`;
   
-  return `
-    <tr>
-      <td style="background-color: ${outerBg}; padding: ${outerPaddingTop}px ${outerPaddingRight}px ${outerPaddingBottom}px ${outerPaddingLeft}px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; ${innerStyle}">
-          ${content}
-        </table>
-      </td>
-    </tr>`;
+  return `<tr><td style="background-color:${bg};padding:${pt}px ${pr}px ${pb}px ${pl}px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${s}">${content}</table></td></tr>`;
 }
 
 export function exportToHTML(newsletter) {
@@ -245,17 +263,10 @@ export function exportForGmail(newsletter) {
   // Build inner container style
   const innerContainerStyle = `background-color: ${innerBg};${innerBorderWidth > 0 ? ` border: ${innerBorderWidth}px solid ${innerBorderColor};` : ''}${innerBorderRadius > 0 ? ` border-radius: ${innerBorderRadius}px;` : ''} overflow: hidden;`;
 
-  // For Gmail - Uses page settings for consistent appearance
-  // CRITICAL: 80% width with max-width, table-layout: fixed to prevent overflow
-  return `<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color: ${outerBg}; width: 80%; max-width: 600px; margin: 0 auto; font-family: ${FONT_STACKS['default']}; table-layout: fixed;">
-  <tr>
-    <td style="padding: ${outerPadding}px;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${innerContainerStyle} width: 100%; table-layout: fixed;">
-        ${sections}
-      </table>
-    </td>
-  </tr>
-</table>`;
+  // For Gmail - Minified output
+  const html = `<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:${outerBg};width:80%;max-width:600px;margin:0 auto;font-family:${FONT_STACKS['default']};table-layout:fixed"><tr><td style="padding:${outerPadding}px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${innerContainerStyle}width:100%;table-layout:fixed">${sections}</table></td></tr></table>`;
+  
+  return minifyHTML(html);
 }
 
 function exportHeader(section, isGmail = false) {
@@ -282,7 +293,7 @@ function exportHeader(section, isGmail = false) {
   const badgeHtml = section.showDateBadge && section.dateBadgeText ? `
     <tr>
       <td align="right" style="padding: 0 20px 16px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed;">
           <tr>
             <td style="background-color: ${section.dateBadgeBg || '#04D1FC'}; color: ${section.dateBadgeColor || '#ffffff'}; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: ${fontStack}; letter-spacing: 0.05em;">
               ${section.dateBadgeText}
@@ -309,7 +320,7 @@ function exportHeader(section, isGmail = false) {
   return `
     <tr>
       <td style="${bgStyle}">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed">
           ${section.logo ? `
           <tr>
             <td align="${logoAlignment}" style="padding: 40px 20px 20px;">
@@ -388,7 +399,7 @@ function exportSectionHeader(section) {
   return `
     <tr>
       <td style="padding: 0;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed">
           <tr>
             <td style="${bgStyle} color: ${section.color || '#ffffff'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; text-align: center; font-family: ${fontStack}; font-size: ${section.fontSize || 14}px; font-weight: ${section.fontWeight || 600}; letter-spacing: ${section.letterSpacing || '0.08em'}; text-transform: uppercase; border-radius: ${borderRadius}px;">
               ${section.text || ''}
@@ -418,7 +429,7 @@ function exportAccentText(section) {
   const tagHtml = section.tagText ? `
     <tr>
       <td align="${tagAlign}" style="padding-bottom: ${tagToContentGap}px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed;">
           <tr>
             <td align="center" valign="middle" style="background-color: ${section.tagBackgroundColor || '#04D1FC'}; color: ${section.tagTextColor || '#FFFFFF'}; padding: 10px 24px; border-radius: ${section.tagBorderRadius || 8}px; font-size: ${section.tagFontSize || 14}px; font-weight: 600; font-family: ${fontStack}; line-height: 1.2; mso-padding-alt: 12px 24px;">
               ${section.tagText}
@@ -499,7 +510,7 @@ function exportPromoCard(section, isGmail = false) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#F8F9FA'}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px; border-radius: ${section.borderRadius || 16}px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" dir="${direction}" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" dir="${direction}" style="table-layout:fixed;">
           <tr>
             ${rowContent}
           </tr>
@@ -683,7 +694,7 @@ function exportImageCollage(section, isGmail = false) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 16px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed">
           ${tableRowsHtml}
         </table>
       </td>
@@ -719,7 +730,7 @@ function exportProfileCards(section) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 30px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed">
           <tr>
             ${profileCells}
           </tr>
@@ -736,7 +747,7 @@ function exportRecipe(section, isGmail = false) {
   return `
     <tr>
       <td style="background-color: ${section.backgroundColor || '#ffffff'}; padding: 30px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed">
           <tr>
             <td align="center">
               <h2 dir="rtl" style="font-family: ${fontStack}; font-size: 24px; font-weight: 600; color: #333333; margin: 0 0 20px;">${section.title || ''}</h2>
@@ -828,7 +839,7 @@ function exportFooter(section) {
     content += `
       <tr>
         <td style="padding: 0 0 20px;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed">
             <tr>
               <td style="border-top: ${section.dividerWidth || 1}px solid ${section.dividerColor || '#E5E7EB'};"></td>
             </tr>
@@ -877,7 +888,7 @@ function exportFooter(section) {
   return `
     <tr>
       <td style="background-color: ${bgColor}; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; table-layout: fixed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout:fixed">
           ${content}
         </table>
       </td>
