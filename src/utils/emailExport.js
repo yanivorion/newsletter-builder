@@ -35,18 +35,6 @@ const FONT_STACKS = {
   'default': "Arial,sans-serif"
 };
 
-// Common table attributes - shortened
-const T = 'role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"';
-const TF = `${T} style="table-layout:fixed"`;
-
-// Font stacks with proper fallbacks for email clients
-const FONT_STACKS = {
-  'Poppins': "Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  'Noto Sans Hebrew': "'Noto Sans Hebrew', 'Arial Hebrew', 'Segoe UI', Arial, sans-serif",
-  'Inter': "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  'default': "Arial, Helvetica, sans-serif"
-};
-
 function getFontStack(fontFamily) {
   return FONT_STACKS[fontFamily] || FONT_STACKS['default'];
 }
